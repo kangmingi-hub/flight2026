@@ -14,26 +14,19 @@ interface Props {
   onAddRecord: (record: DailyRecord) => void;
 }
 
-// 선택된 칸의 스타일 편집 패널
 function StylePanel({
-  coordKey,
-  color,
-  fontSize,
-  onChange,
-  onClose,
+  coordKey, color, fontSize, onChange, onClose,
 }: {
-  coordKey: CoordKey;
-  color: string;
-  fontSize: number;
-  onChange: (style: Partial<{ color: string; fontSize: number }>) => void;
+  coordKey: CoordKey; color: string; fontSize: number;
+  onChange: (s: Partial<{ color: string; fontSize: number }>) => void;
   onClose: () => void;
 }) {
   const LABEL: Record<CoordKey, string> = {
-    evHyun: '단순전도 현황', evMok: '단순전도 목표', evBogo: '단순전도 달성률',
-    effHyun: '유효전도 현황', effMok: '유효전도 목표', effInter: '유효전도 달성률',
-    attHyun: '출석 현황', attMok: '출석 목표', attEvent: '출석 달성률',
-    bapHyun: '침례 현황', bapMok: '침례 목표', bapReg: '침례 달성률',
-    gauge: '게이지바', gaugePct: '달성률 숫자',
+    evHyun: '단순전도 현황', evMok: '단순전도 목표', evBogo: '단순전도 달성률', evGauge: '단순전도 게이지',
+    effHyun: '유효전도 현황', effMok: '유효전도 목표', effInter: '유효전도 달성률', effGauge: '유효전도 게이지',
+    attHyun: '출석 현황', attMok: '출석 목표', attEvent: '출석 달성률', attGauge: '출석 게이지',
+    bapHyun: '침례 현황', bapMok: '침례 목표', bapReg: '침례 달성률', bapGauge: '침례 게이지',
+    gauge: '전체 게이지', gaugePct: '전체 달성률',
   };
   return (
     <div style={{
@@ -49,8 +42,7 @@ function StylePanel({
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <label style={{ fontSize: 12, color: '#555', display: 'flex', alignItems: 'center', gap: 8 }}>
           글자 색상
-          <input type="color" value={color}
-            onChange={e => onChange({ color: e.target.value })}
+          <input type="color" value={color} onChange={e => onChange({ color: e.target.value })}
             style={{ width: 36, height: 28, border: 'none', cursor: 'pointer', borderRadius: 4 }} />
           <span style={{ fontSize: 11, color: '#999' }}>{color}</span>
         </label>
@@ -78,8 +70,8 @@ function DraggableOverlayNumber({
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
-  const containerRef = useRef<HTMLDivElement>(null);
-  const dragStart = useRef<{ mouseX: number; mouseY: number; origLeft: number; origTop: number } | null>(null);
+  const ref = useRef<HTMLDivElement>(null);
+  const drag = useRef<{ mouseX: number; mouseY: number; origLeft: number; origTop: number } | null>(null);
   const isSelected = selectedKey === coordKey;
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -89,29 +81,25 @@ function DraggableOverlayNumber({
     const parent = (e.currentTarget as HTMLElement).closest('.overlay-container') as HTMLElement;
     if (!parent) return;
     const rect = parent.getBoundingClientRect();
-    dragStart.current = { mouseX: e.clientX, mouseY: e.clientY, origLeft: coords[0], origTop: coords[1] };
-    const onMouseMove = (mv: MouseEvent) => {
-      if (!dragStart.current || !containerRef.current) return;
-      const dx = ((mv.clientX - dragStart.current.mouseX) / rect.width) * 100;
-      const dy = ((mv.clientY - dragStart.current.mouseY) / rect.height) * 100;
-      containerRef.current.style.left = `${Math.max(0, Math.min(95, dragStart.current.origLeft + dx))}%`;
-      containerRef.current.style.top = `${Math.max(0, Math.min(95, dragStart.current.origTop + dy))}%`;
+    drag.current = { mouseX: e.clientX, mouseY: e.clientY, origLeft: coords[0], origTop: coords[1] };
+    const onMove = (mv: MouseEvent) => {
+      if (!drag.current || !ref.current) return;
+      ref.current.style.left = `${Math.max(0, Math.min(95, drag.current.origLeft + ((mv.clientX - drag.current.mouseX) / rect.width) * 100))}%`;
+      ref.current.style.top  = `${Math.max(0, Math.min(95, drag.current.origTop  + ((mv.clientY - drag.current.mouseY) / rect.height) * 100))}%`;
     };
-    const onMouseUp = (mu: MouseEvent) => {
-      if (!dragStart.current) return;
-      const dx = ((mu.clientX - dragStart.current.mouseX) / rect.width) * 100;
-      const dy = ((mu.clientY - dragStart.current.mouseY) / rect.height) * 100;
+    const onUp = (mu: MouseEvent) => {
+      if (!drag.current) return;
       onDragEnd(coordKey, [
-        Math.max(0, Math.min(95, dragStart.current.origLeft + dx)),
-        Math.max(0, Math.min(95, dragStart.current.origTop + dy)),
+        Math.max(0, Math.min(95, drag.current.origLeft + ((mu.clientX - drag.current.mouseX) / rect.width) * 100)),
+        Math.max(0, Math.min(95, drag.current.origTop  + ((mu.clientY - drag.current.mouseY) / rect.height) * 100)),
         coords[2], coords[3],
       ]);
-      dragStart.current = null;
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
+      drag.current = null;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
     };
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
   }, [editMode, coords, coordKey, onDragEnd, onSelect]);
 
   if (editing && !editMode) {
@@ -136,7 +124,7 @@ function DraggableOverlayNumber({
   }
 
   return (
-    <div ref={containerRef} style={{
+    <div ref={ref} style={{
       position: 'absolute', left: `${coords[0]}%`, top: `${coords[1]}%`,
       width: `${coords[2]}%`, height: `${coords[3]}%`,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -158,8 +146,7 @@ function DraggableOverlayNumber({
 }
 
 function DraggableDisplay({
-  coordKey, text, coords, style: overlayStyle, editMode, selectedKey,
-  onDragEnd, onSelect,
+  coordKey, text, coords, style: overlayStyle, editMode, selectedKey, onDragEnd, onSelect,
 }: {
   coordKey: CoordKey; text: string; coords: number[];
   style: { color: string; fontSize: number };
@@ -167,8 +154,8 @@ function DraggableDisplay({
   onDragEnd: (key: CoordKey, newCoords: number[]) => void;
   onSelect: (key: CoordKey) => void;
 }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const dragStart = useRef<{ mouseX: number; mouseY: number; origLeft: number; origTop: number } | null>(null);
+  const ref = useRef<HTMLDivElement>(null);
+  const drag = useRef<{ mouseX: number; mouseY: number; origLeft: number; origTop: number } | null>(null);
   const isSelected = selectedKey === coordKey;
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -178,41 +165,142 @@ function DraggableDisplay({
     const parent = (e.currentTarget as HTMLElement).closest('.overlay-container') as HTMLElement;
     if (!parent) return;
     const rect = parent.getBoundingClientRect();
-    dragStart.current = { mouseX: e.clientX, mouseY: e.clientY, origLeft: coords[0], origTop: coords[1] };
-    const onMouseMove = (mv: MouseEvent) => {
-      if (!dragStart.current || !containerRef.current) return;
-      const dx = ((mv.clientX - dragStart.current.mouseX) / rect.width) * 100;
-      const dy = ((mv.clientY - dragStart.current.mouseY) / rect.height) * 100;
-      containerRef.current.style.left = `${Math.max(0, dragStart.current.origLeft + dx)}%`;
-      containerRef.current.style.top = `${Math.max(0, dragStart.current.origTop + dy)}%`;
+    drag.current = { mouseX: e.clientX, mouseY: e.clientY, origLeft: coords[0], origTop: coords[1] };
+    const onMove = (mv: MouseEvent) => {
+      if (!drag.current || !ref.current) return;
+      ref.current.style.left = `${Math.max(0, drag.current.origLeft + ((mv.clientX - drag.current.mouseX) / rect.width) * 100)}%`;
+      ref.current.style.top  = `${Math.max(0, drag.current.origTop  + ((mv.clientY - drag.current.mouseY) / rect.height) * 100)}%`;
     };
-    const onMouseUp = (mu: MouseEvent) => {
-      if (!dragStart.current) return;
-      const dx = ((mu.clientX - dragStart.current.mouseX) / rect.width) * 100;
-      const dy = ((mu.clientY - dragStart.current.mouseY) / rect.height) * 100;
-      onDragEnd(coordKey, [Math.max(0, dragStart.current.origLeft + dx), Math.max(0, dragStart.current.origTop + dy), coords[2], coords[3]]);
-      dragStart.current = null;
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
+    const onUp = (mu: MouseEvent) => {
+      if (!drag.current) return;
+      onDragEnd(coordKey, [
+        Math.max(0, drag.current.origLeft + ((mu.clientX - drag.current.mouseX) / rect.width) * 100),
+        Math.max(0, drag.current.origTop  + ((mu.clientY - drag.current.mouseY) / rect.height) * 100),
+        coords[2], coords[3],
+      ]);
+      drag.current = null;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
     };
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
   }, [editMode, coords, coordKey, onDragEnd, onSelect]);
 
   return (
-    <div ref={containerRef} style={{
+    <div ref={ref} style={{
       position: 'absolute', left: `${coords[0]}%`, top: `${coords[1]}%`,
       width: `${coords[2]}%`, height: `${coords[3]}%`,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       fontSize: overlayStyle.fontSize, fontWeight: 700, color: overlayStyle.color,
-      zIndex: 10, cursor: editMode ? 'grab' : 'default',
+      zIndex: 10, cursor: editMode ? 'grab' : 'default', borderRadius: 3,
       outline: editMode ? (isSelected ? '2px solid #c0820a' : '2px dashed #c0820a') : 'none',
       background: editMode ? (isSelected ? 'rgba(192,130,10,0.15)' : 'rgba(192,130,10,0.06)') : 'transparent',
       userSelect: 'none',
-    }}
-      onMouseDown={handleMouseDown}
-    >
+    }} onMouseDown={handleMouseDown}>
       {text}
+    </div>
+  );
+}
+
+function DraggableGauge({
+  coordKey, rate, coords, editMode, selectedKey, color, onDragEnd, onSelect,
+}: {
+  coordKey: CoordKey; rate: number; coords: number[];
+  editMode: boolean; selectedKey: CoordKey | null;
+  color: string;
+  onDragEnd: (key: CoordKey, newCoords: number[]) => void;
+  onSelect: (key: CoordKey) => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const drag = useRef<{ mouseX: number; mouseY: number; origLeft: number; origTop: number } | null>(null);
+  const resize = useRef<{ edge: string; mouseX: number; mouseY: number; origLeft: number; origTop: number; origW: number; origH: number } | null>(null);
+  const isSelected = selectedKey === coordKey;
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (!editMode) return;
+    e.preventDefault();
+    onSelect(coordKey);
+    const parent = (e.currentTarget as HTMLElement).closest('.overlay-container') as HTMLElement;
+    if (!parent) return;
+    const rect = parent.getBoundingClientRect();
+    drag.current = { mouseX: e.clientX, mouseY: e.clientY, origLeft: coords[0], origTop: coords[1] };
+    const onMove = (mv: MouseEvent) => {
+      if (!drag.current || !ref.current) return;
+      ref.current.style.left = `${Math.max(0, drag.current.origLeft + ((mv.clientX - drag.current.mouseX) / rect.width) * 100)}%`;
+      ref.current.style.top  = `${Math.max(0, drag.current.origTop  + ((mv.clientY - drag.current.mouseY) / rect.height) * 100)}%`;
+    };
+    const onUp = (mu: MouseEvent) => {
+      if (!drag.current) return;
+      onDragEnd(coordKey, [
+        Math.max(0, drag.current.origLeft + ((mu.clientX - drag.current.mouseX) / rect.width) * 100),
+        Math.max(0, drag.current.origTop  + ((mu.clientY - drag.current.mouseY) / rect.height) * 100),
+        coords[2], coords[3],
+      ]);
+      drag.current = null;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }, [editMode, coords, coordKey, onDragEnd, onSelect]);
+
+  const handleResizeDown = useCallback((e: React.MouseEvent, edge: string) => {
+    if (!editMode) return;
+    e.preventDefault(); e.stopPropagation();
+    const parent = (e.currentTarget as HTMLElement).closest('.overlay-container') as HTMLElement;
+    if (!parent) return;
+    const rect = parent.getBoundingClientRect();
+    resize.current = { edge, mouseX: e.clientX, mouseY: e.clientY, origLeft: coords[0], origTop: coords[1], origW: coords[2], origH: coords[3] };
+    const onMove = (mv: MouseEvent) => {
+      if (!resize.current || !ref.current) return;
+      const dx = ((mv.clientX - resize.current.mouseX) / rect.width) * 100;
+      const dy = ((mv.clientY - resize.current.mouseY) / rect.height) * 100;
+      const { origLeft, origTop, origW, origH } = resize.current;
+      if (edge === 'right')  ref.current.style.width  = `${Math.max(2, origW + dx)}%`;
+      if (edge === 'bottom') ref.current.style.height = `${Math.max(0.5, origH + dy)}%`;
+      if (edge === 'left')   { ref.current.style.left = `${Math.max(0, origLeft + dx)}%`; ref.current.style.width  = `${Math.max(2, origW - dx)}%`; }
+      if (edge === 'top')    { ref.current.style.top  = `${Math.max(0, origTop  + dy)}%`; ref.current.style.height = `${Math.max(0.5, origH - dy)}%`; }
+    };
+    const onUp = (mu: MouseEvent) => {
+      if (!resize.current) return;
+      const dx = ((mu.clientX - resize.current.mouseX) / rect.width) * 100;
+      const dy = ((mu.clientY - resize.current.mouseY) / rect.height) * 100;
+      const { origLeft, origTop, origW, origH, edge: ed } = resize.current;
+      let [nl, nt, nw, nh] = [origLeft, origTop, origW, origH];
+      if (ed === 'right')  nw = Math.max(2, origW + dx);
+      if (ed === 'bottom') nh = Math.max(0.5, origH + dy);
+      if (ed === 'left')   { nl = Math.max(0, origLeft + dx); nw = Math.max(2, origW - dx); }
+      if (ed === 'top')    { nt = Math.max(0, origTop  + dy); nh = Math.max(0.5, origH - dy); }
+      onDragEnd(coordKey, [nl, nt, nw, nh]);
+      resize.current = null;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }, [editMode, coords, coordKey, onDragEnd]);
+
+  return (
+    <div ref={ref} style={{
+      position: 'absolute', left: `${coords[0]}%`, top: `${coords[1]}%`,
+      width: `${coords[2]}%`, height: `${coords[3]}%`,
+      overflow: 'hidden', borderRadius: 99, zIndex: 10,
+      cursor: editMode ? 'grab' : 'default',
+      outline: editMode ? (isSelected ? `2px solid ${color}` : `2px dashed ${color}`) : 'none',
+      boxSizing: 'border-box',
+    }} onMouseDown={handleMouseDown}>
+      <div style={{
+        height: '100%', width: `${rate}%`,
+        background: `linear-gradient(90deg, ${color}aa, ${color})`,
+        borderRadius: 99,
+        transition: 'width 0.8s cubic-bezier(0.34,1.56,0.64,1)',
+      }} />
+      {editMode && (<>
+        <div onMouseDown={e => handleResizeDown(e, 'right')}  style={{ position: 'absolute', right: 0,  top: 0, width: 8, height: '100%', cursor: 'ew-resize', zIndex: 30, background: `${color}66`, borderRadius: '0 99px 99px 0' }} />
+        <div onMouseDown={e => handleResizeDown(e, 'left')}   style={{ position: 'absolute', left: 0,   top: 0, width: 8, height: '100%', cursor: 'ew-resize', zIndex: 30, background: `${color}66`, borderRadius: '99px 0 0 99px' }} />
+        <div onMouseDown={e => handleResizeDown(e, 'bottom')} style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', height: 4, cursor: 'ns-resize', zIndex: 30, background: `${color}66` }} />
+        <div onMouseDown={e => handleResizeDown(e, 'top')}    style={{ position: 'absolute', top: 0,    left: 0, width: '100%', height: 4, cursor: 'ns-resize', zIndex: 30, background: `${color}66` }} />
+      </>)}
     </div>
   );
 }
@@ -237,89 +325,6 @@ export function ClubOverlay({ club, overallRate, getRate, onUpdateStat, onUpdate
     setSelectedKey(prev => prev === key ? null : key);
   }, []);
 
-  // 게이지 드래그 + 리사이즈
-  const gaugeRef = useRef<HTMLDivElement>(null);
-  const gaugeDrag = useRef<{ mouseX: number; mouseY: number; origLeft: number; origTop: number } | null>(null);
-  const gaugeResize = useRef<{
-    edge: 'right' | 'bottom' | 'left' | 'top';
-    mouseX: number; mouseY: number;
-    origLeft: number; origTop: number; origW: number; origH: number;
-  } | null>(null);
-
-  const handleGaugeMouseDown = useCallback((e: React.MouseEvent) => {
-    if (!editMode) return;
-    e.preventDefault();
-    setSelectedKey('gauge');
-    const parent = (e.currentTarget as HTMLElement).closest('.overlay-container') as HTMLElement;
-    if (!parent) return;
-    const rect = parent.getBoundingClientRect();
-    gaugeDrag.current = { mouseX: e.clientX, mouseY: e.clientY, origLeft: c.gauge[0], origTop: c.gauge[1] };
-    const onMouseMove = (mv: MouseEvent) => {
-      if (!gaugeDrag.current || !gaugeRef.current) return;
-      const dx = ((mv.clientX - gaugeDrag.current.mouseX) / rect.width) * 100;
-      const dy = ((mv.clientY - gaugeDrag.current.mouseY) / rect.height) * 100;
-      gaugeRef.current.style.left = `${Math.max(0, gaugeDrag.current.origLeft + dx)}%`;
-      gaugeRef.current.style.top = `${Math.max(0, gaugeDrag.current.origTop + dy)}%`;
-    };
-    const onMouseUp = (mu: MouseEvent) => {
-      if (!gaugeDrag.current) return;
-      const dx = ((mu.clientX - gaugeDrag.current.mouseX) / rect.width) * 100;
-      const dy = ((mu.clientY - gaugeDrag.current.mouseY) / rect.height) * 100;
-      onUpdateCoord('gauge', [Math.max(0, gaugeDrag.current.origLeft + dx), Math.max(0, gaugeDrag.current.origTop + dy), c.gauge[2], c.gauge[3]]);
-      gaugeDrag.current = null;
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
-    };
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
-  }, [editMode, c.gauge, onUpdateCoord]);
-
-  // 리사이즈 핸들 (4방향)
-  const handleResizeMouseDown = useCallback((e: React.MouseEvent, edge: 'right' | 'bottom' | 'left' | 'top') => {
-    if (!editMode) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const parent = (e.currentTarget as HTMLElement).closest('.overlay-container') as HTMLElement;
-    if (!parent) return;
-    const rect = parent.getBoundingClientRect();
-    gaugeResize.current = { edge, mouseX: e.clientX, mouseY: e.clientY, origLeft: c.gauge[0], origTop: c.gauge[1], origW: c.gauge[2], origH: c.gauge[3] };
-    const onMouseMove = (mv: MouseEvent) => {
-      if (!gaugeResize.current || !gaugeRef.current) return;
-      const dx = ((mv.clientX - gaugeResize.current.mouseX) / rect.width) * 100;
-      const dy = ((mv.clientY - gaugeResize.current.mouseY) / rect.height) * 100;
-      const { origLeft, origTop, origW, origH } = gaugeResize.current;
-      if (edge === 'right') gaugeRef.current.style.width = `${Math.max(2, origW + dx)}%`;
-      if (edge === 'bottom') gaugeRef.current.style.height = `${Math.max(0.5, origH + dy)}%`;
-      if (edge === 'left') {
-        gaugeRef.current.style.left = `${Math.max(0, origLeft + dx)}%`;
-        gaugeRef.current.style.width = `${Math.max(2, origW - dx)}%`;
-      }
-      if (edge === 'top') {
-        gaugeRef.current.style.top = `${Math.max(0, origTop + dy)}%`;
-        gaugeRef.current.style.height = `${Math.max(0.5, origH - dy)}%`;
-      }
-    };
-    const onMouseUp = (mu: MouseEvent) => {
-      if (!gaugeResize.current) return;
-      const dx = ((mu.clientX - gaugeResize.current.mouseX) / rect.width) * 100;
-      const dy = ((mu.clientY - gaugeResize.current.mouseY) / rect.height) * 100;
-      const { origLeft, origTop, origW, origH, edge: ed } = gaugeResize.current;
-      let newLeft = origLeft, newTop = origTop, newW = origW, newH = origH;
-      if (ed === 'right')  { newW = Math.max(2, origW + dx); }
-      if (ed === 'bottom') { newH = Math.max(0.5, origH + dy); }
-      if (ed === 'left')   { newLeft = Math.max(0, origLeft + dx); newW = Math.max(2, origW - dx); }
-      if (ed === 'top')    { newTop = Math.max(0, origTop + dy); newH = Math.max(0.5, origH - dy); }
-      onUpdateCoord('gauge', [newLeft, newTop, newW, newH]);
-      gaugeResize.current = null;
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
-    };
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
-  }, [editMode, c.gauge, onUpdateCoord]);
-
-  const gaugeWidth = overallRate;
-
   const numberFields: { key: CoordKey; stat: StatKey; field: 'current' | 'target' }[] = [
     { key: 'evHyun',  stat: 'evangelism',          field: 'current' },
     { key: 'evMok',   stat: 'evangelism',          field: 'target'  },
@@ -339,6 +344,16 @@ export function ClubOverlay({ club, overallRate, getRate, onUpdateStat, onUpdate
     { key: 'gaugePct', text: overallRate > 0 ? String(overallRate) : '' },
   ];
 
+  const gaugeFields: { key: CoordKey; rate: number; color: string }[] = [
+    { key: 'evGauge',  rate: getRate(club.stats.evangelism.current, club.stats.evangelism.target),                   color: '#e84393' },
+    { key: 'effGauge', rate: getRate(club.stats.effectiveEvangelism.current, club.stats.effectiveEvangelism.target), color: '#2ecc71' },
+    { key: 'attGauge', rate: getRate(club.stats.attendance.current, club.stats.attendance.target),                   color: '#e67e22' },
+    { key: 'bapGauge', rate: getRate(club.stats.baptism.current, club.stats.baptism.target),                         color: '#3498db' },
+    { key: 'gauge',    rate: overallRate,                                                                             color: '#9b59b6' },
+  ];
+
+  const GAUGE_KEYS = new Set(['evGauge','effGauge','attGauge','bapGauge','gauge']);
+
   return (
     <div style={{ width: '100%', position: 'relative' }}>
       {editMode && (
@@ -354,7 +369,6 @@ export function ClubOverlay({ club, overallRate, getRate, onUpdateStat, onUpdate
       <div className="overlay-container" style={{ position: 'relative', width: '100%' }}>
         <img src={club.image} alt={club.name} style={{ width: '100%', height: 'auto', display: 'block' }} draggable={false} />
 
-        {/* 숫자 입력 칸들 */}
         {numberFields.map(({ key, stat, field }) => (
           <DraggableOverlayNumber
             key={key} coordKey={key}
@@ -366,7 +380,6 @@ export function ClubOverlay({ club, overallRate, getRate, onUpdateStat, onUpdate
           />
         ))}
 
-        {/* 달성률 표시 칸들 */}
         {displayFields.map(({ key, text }) => (
           <DraggableDisplay
             key={key} coordKey={key} text={text}
@@ -376,37 +389,16 @@ export function ClubOverlay({ club, overallRate, getRate, onUpdateStat, onUpdate
           />
         ))}
 
-        {/* 게이지바 */}
-        <div ref={gaugeRef} style={{
-          position: 'absolute', left: `${c.gauge[0]}%`, top: `${c.gauge[1]}%`,
-          width: `${c.gauge[2]}%`, height: `${c.gauge[3]}%`,
-          overflow: 'hidden', borderRadius: 99, zIndex: 10,
-          cursor: editMode ? 'grab' : 'default',
-          outline: editMode ? (selectedKey === 'gauge' ? '2px solid #e84393' : '2px dashed #e84393') : 'none',
-          boxSizing: 'border-box',
-        }} onMouseDown={handleGaugeMouseDown}>
-          <div style={{
-            height: '100%', width: `${gaugeWidth}%`,
-            background: 'linear-gradient(90deg, #e84393, #ff6b35)',
-            borderRadius: 99,
-            transition: 'width 0.8s cubic-bezier(0.34,1.56,0.64,1)',
-          }} />
+        {gaugeFields.map(({ key, rate, color }) => (
+          <DraggableGauge
+            key={key} coordKey={key} rate={rate}
+            coords={c[key]} editMode={editMode} selectedKey={selectedKey}
+            color={color}
+            onDragEnd={handleDragEnd} onSelect={handleSelect}
+          />
+        ))}
 
-          {/* 리사이즈 핸들 4방향 */}
-          {editMode && (<>
-            <div onMouseDown={e => handleResizeMouseDown(e, 'right')}
-              style={{ position: 'absolute', right: 0, top: 0, width: 8, height: '100%', cursor: 'ew-resize', zIndex: 30, background: 'rgba(232,67,147,0.4)', borderRadius: '0 99px 99px 0' }} />
-            <div onMouseDown={e => handleResizeMouseDown(e, 'left')}
-              style={{ position: 'absolute', left: 0, top: 0, width: 8, height: '100%', cursor: 'ew-resize', zIndex: 30, background: 'rgba(232,67,147,0.4)', borderRadius: '99px 0 0 99px' }} />
-            <div onMouseDown={e => handleResizeMouseDown(e, 'bottom')}
-              style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', height: 4, cursor: 'ns-resize', zIndex: 30, background: 'rgba(232,67,147,0.4)' }} />
-            <div onMouseDown={e => handleResizeMouseDown(e, 'top')}
-              style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: 4, cursor: 'ns-resize', zIndex: 30, background: 'rgba(232,67,147,0.4)' }} />
-          </>)}
-        </div>
-
-        {/* 스타일 편집 패널 */}
-        {editMode && selectedKey && selectedKey !== 'gauge' && (
+        {editMode && selectedKey && !GAUGE_KEYS.has(selectedKey) && (
           <StylePanel
             coordKey={selectedKey}
             color={getStyle(selectedKey).color}
@@ -417,7 +409,6 @@ export function ClubOverlay({ club, overallRate, getRate, onUpdateStat, onUpdate
         )}
       </div>
 
-      {/* 하단 버튼 */}
       <div style={{ display: 'flex', gap: 8, padding: '8px 0', justifyContent: 'flex-end' }}>
         <button
           className="ov-btn"
