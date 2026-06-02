@@ -53,10 +53,18 @@ function loadOverviewStyles(): OverlayStyles {
   }
 }
 
+function loadDday(): number {
+  try {
+    const raw = localStorage.getItem(DDAY_KEY);
+    return raw ? Number(raw) : 0;
+  } catch { return 0; }
+}
+
 export function useClubs() {
   const [clubs, setClubs] = useState<Club[]>(loadClubs);
   const [overviewCoords, setOverviewCoords] = useState<OverviewCoords>(loadOverviewCoords);
   const [overviewStyles, setOverviewStyles] = useState<OverlayStyles>(loadOverviewStyles);
+  const [dday, setDday] = useState<number>(loadDday);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(clubs));
@@ -104,6 +112,11 @@ export function useClubs() {
       return next;
     });
   }, []);
+
+  const updateDday = useCallback((value: number) => {
+  setDday(value);
+  localStorage.setItem(DDAY_KEY, String(value));
+}, []);
 
   const updateStat = useCallback((clubId: string, stat: StatKey, field: 'current' | 'target', value: number) => {
     setClubs(prev =>
@@ -179,6 +192,6 @@ export function useClubs() {
   return {
     clubs, updateStat, updateCoord, updateStyle,
     overviewCoords, overviewStyles, updateOverviewCoord, updateOverviewStyle,
-    addDailyRecord, getOverallRate, getRate, getTotals,
+    addDailyRecord, getOverallRate, getRate, getTotals, dday, updateDday,
   };
 }
