@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
+import html2canvas from 'html2canvas';
 import { OverviewCoords, OverviewCoordKey, OverlayStyles } from '../types';
 
 const OVERVIEW_IMAGE = '/images/overview.png';
@@ -16,9 +17,11 @@ interface Props {
   totals: Totals;
   coords: OverviewCoords;
   styles: OverlayStyles;
+  dday: number;
   getRate: (current: number, target: number) => number;
   onUpdateCoord: (key: OverviewCoordKey, coords: number[]) => void;
   onUpdateStyle: (key: OverviewCoordKey, style: Partial<{ color: string; fontSize: number }>) => void;
+  onUpdateDday: (value: number) => void;
 }
 
 function StylePanel({
@@ -33,7 +36,7 @@ function StylePanel({
     effHyun: '유효전도 현황', effMok: '유효전도 목표', effInter: '유효전도 달성률', effGauge: '유효전도 게이지',
     attHyun: '출석 현황', attMok: '출석 목표', attEvent: '출석 달성률', attGauge: '출석 게이지',
     bapHyun: '침례 현황', bapMok: '침례 목표', bapReg: '침례 달성률', bapGauge: '침례 게이지',
-    gauge: '전체 게이지', gaugePct: '전체 달성률',
+    gauge: '전체 게이지', dday: 'D-Day', gaugePct: '전체 달성률',
   };
   return (
     <div style={{
@@ -92,9 +95,11 @@ function DraggableDisplay({
     };
     const onUp = (mu: MouseEvent) => {
       if (!drag.current) return;
-      const newLeft = Math.max(0, drag.current.origLeft + ((mu.clientX - drag.current.mouseX) / rect.width) * 100);
-      const newTop  = Math.max(0, drag.current.origTop  + ((mu.clientY - drag.current.mouseY) / rect.height) * 100);
-      onDragEnd(coordKey, [newLeft, newTop, coords[2], coords[3]]);
+      onDragEnd(coordKey, [
+        Math.max(0, drag.current.origLeft + ((mu.clientX - drag.current.mouseX) / rect.width) * 100),
+        Math.max(0, drag.current.origTop  + ((mu.clientY - drag.current.mouseY) / rect.height) * 100),
+        coords[2], coords[3],
+      ]);
       drag.current = null;
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
@@ -148,9 +153,11 @@ function DraggableGauge({
     };
     const onUp = (mu: MouseEvent) => {
       if (!drag.current) return;
-      const newLeft = Math.max(0, drag.current.origLeft + ((mu.clientX - drag.current.mouseX) / rect.width) * 100);
-      const newTop  = Math.max(0, drag.current.origTop  + ((mu.clientY - drag.current.mouseY) / rect.height) * 100);
-      onDragEnd(coordKey, [newLeft, newTop, coords[2], coords[3]]);
+      onDragEnd(coordKey, [
+        Math.max(0, drag.current.origLeft + ((mu.clientX - drag.current.mouseX) / rect.width) * 100),
+        Math.max(0, drag.current.origTop  + ((mu.clientY - drag.current.mouseY) / rect.height) * 100),
+        coords[2], coords[3],
+      ]);
       drag.current = null;
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
@@ -173,8 +180,8 @@ function DraggableGauge({
       const { origLeft, origTop, origW, origH } = resize.current;
       if (edge === 'right')  ref.current.style.width  = `${Math.max(2, origW + dx)}%`;
       if (edge === 'bottom') ref.current.style.height = `${Math.max(0.5, origH + dy)}%`;
-      if (edge === 'left')   { ref.current.style.left = `${Math.max(0, origLeft + dx)}%`; ref.current.style.width = `${Math.max(2, origW - dx)}%`; }
-      if (edge === 'top')    { ref.current.style.top  = `${Math.max(0, origTop + dy)}%`;  ref.current.style.height = `${Math.max(0.5, origH - dy)}%`; }
+      if (edge === 'left')   { ref.current.style.left = `${Math.max(0, origLeft + dx)}%`; ref.current.style.width  = `${Math.max(2, origW - dx)}%`; }
+      if (edge === 'top')    { ref.current.style.top  = `${Math.max(0, origTop  + dy)}%`; ref.current.style.height = `${Math.max(0.5, origH - dy)}%`; }
     };
     const onUp = (mu: MouseEvent) => {
       if (!resize.current) return;
@@ -185,7 +192,7 @@ function DraggableGauge({
       if (ed === 'right')  nw = Math.max(2, origW + dx);
       if (ed === 'bottom') nh = Math.max(0.5, origH + dy);
       if (ed === 'left')   { nl = Math.max(0, origLeft + dx); nw = Math.max(2, origW - dx); }
-      if (ed === 'top')    { nt = Math.max(0, origTop + dy);  nh = Math.max(0.5, origH - dy); }
+      if (ed === 'top')    { nt = Math.max(0, origTop  + dy); nh = Math.max(0.5, origH - dy); }
       onDragEnd(coordKey, [nl, nt, nw, nh]);
       resize.current = null;
       window.removeEventListener('mousemove', onMove);
@@ -220,9 +227,98 @@ function DraggableGauge({
   );
 }
 
-export function OverviewOverlay({ totals, coords: c, styles, getRate, onUpdateCoord, onUpdateStyle }: Props) {
+// D-Day 입력 칸 (클릭하면 숫자 입력 가능, 편집모드에선 드래그)
+function DraggableDday({
+  coords, style: overlayStyle, editMode, selectedKey, dday, onDragEnd, onSelect, onUpdateDday,
+}: {
+  coords: number[]; style: { color: string; fontSize: number };
+  editMode: boolean; selectedKey: OverviewCoordKey | null;
+  dday: number;
+  onDragEnd: (key: OverviewCoordKey, newCoords: number[]) => void;
+  onSelect: (key: OverviewCoordKey) => void;
+  onUpdateDday: (value: number) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+  const ref = useRef<HTMLDivElement>(null);
+  const drag = useRef<{ mouseX: number; mouseY: number; origLeft: number; origTop: number } | null>(null);
+  const isSelected = selectedKey === 'dday';
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (!editMode) return;
+    e.preventDefault();
+    onSelect('dday');
+    const parent = (e.currentTarget as HTMLElement).closest('.overlay-container') as HTMLElement;
+    if (!parent) return;
+    const rect = parent.getBoundingClientRect();
+    drag.current = { mouseX: e.clientX, mouseY: e.clientY, origLeft: coords[0], origTop: coords[1] };
+    const onMove = (mv: MouseEvent) => {
+      if (!drag.current || !ref.current) return;
+      ref.current.style.left = `${Math.max(0, drag.current.origLeft + ((mv.clientX - drag.current.mouseX) / rect.width) * 100)}%`;
+      ref.current.style.top  = `${Math.max(0, drag.current.origTop  + ((mv.clientY - drag.current.mouseY) / rect.height) * 100)}%`;
+    };
+    const onUp = (mu: MouseEvent) => {
+      if (!drag.current) return;
+      onDragEnd('dday', [
+        Math.max(0, drag.current.origLeft + ((mu.clientX - drag.current.mouseX) / rect.width) * 100),
+        Math.max(0, drag.current.origTop  + ((mu.clientY - drag.current.mouseY) / rect.height) * 100),
+        coords[2], coords[3],
+      ]);
+      drag.current = null;
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  }, [editMode, coords, onDragEnd, onSelect]);
+
+  if (editing && !editMode) {
+    return (
+      <input autoFocus type="number" min={0} value={draft}
+        style={{
+          position: 'absolute', left: `${coords[0]}%`, top: `${coords[1]}%`,
+          width: `${coords[2]}%`, height: `${coords[3]}%`,
+          background: 'rgba(255,255,230,0.92)', border: '2px solid #4a90d9',
+          borderRadius: 3, textAlign: 'center',
+          fontSize: overlayStyle.fontSize, fontWeight: 700, color: '#333',
+          padding: 0, outline: 'none', zIndex: 20,
+        }}
+        onChange={e => setDraft(e.target.value)}
+        onBlur={() => { onUpdateDday(Math.max(0, Number(draft) || 0)); setEditing(false); }}
+        onKeyDown={e => {
+          if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+          if (e.key === 'Escape') setEditing(false);
+        }}
+      />
+    );
+  }
+
+  return (
+    <div ref={ref} style={{
+      position: 'absolute', left: `${coords[0]}%`, top: `${coords[1]}%`,
+      width: `${coords[2]}%`, height: `${coords[3]}%`,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: overlayStyle.fontSize, fontWeight: 700, color: overlayStyle.color,
+      cursor: editMode ? 'grab' : 'pointer', zIndex: 10, borderRadius: 3,
+      outline: editMode ? (isSelected ? '2px solid #4a90d9' : '2px dashed #4a90d9') : 'none',
+      background: editMode ? (isSelected ? 'rgba(74,144,217,0.15)' : 'rgba(74,144,217,0.06)') : 'transparent',
+      userSelect: 'none',
+    }}
+      title={editMode ? '드래그: 이동' : '클릭해서 D-Day 수정'}
+      onMouseDown={handleMouseDown}
+      onClick={() => { if (!editMode) { setDraft(String(dday)); setEditing(true); } }}
+      onMouseEnter={e => { if (!editMode) e.currentTarget.style.background = 'rgba(200,220,255,0.5)'; }}
+      onMouseLeave={e => { if (!editMode) e.currentTarget.style.background = 'transparent'; }}
+    >
+      {dday > 0 ? dday : ''}
+    </div>
+  );
+}
+
+export function OverviewOverlay({ totals, coords: c, styles, dday, getRate, onUpdateCoord, onUpdateStyle, onUpdateDday }: Props) {
   const [editMode, setEditMode] = useState(false);
   const [selectedKey, setSelectedKey] = useState<OverviewCoordKey | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const getStyle = (key: OverviewCoordKey) => ({
     color: styles[key]?.color ?? DEFAULT_COLOR,
@@ -237,10 +333,19 @@ export function OverviewOverlay({ totals, coords: c, styles, getRate, onUpdateCo
     setSelectedKey(prev => prev === key ? null : key);
   }, []);
 
-  const evRate   = getRate(totals.evangelism.current,          totals.evangelism.target);
-  const effRate  = getRate(totals.effectiveEvangelism.current, totals.effectiveEvangelism.target);
-  const attRate  = getRate(totals.attendance.current,          totals.attendance.target);
-  const bapRate  = getRate(totals.baptism.current,             totals.baptism.target);
+  const handleSaveImage = useCallback(async () => {
+    if (!containerRef.current) return;
+    const canvas = await html2canvas(containerRef.current, { useCORS: true, scale: 2 });
+    const link = document.createElement('a');
+    link.download = 'flight2026_overview.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  }, []);
+
+  const evRate  = getRate(totals.evangelism.current,          totals.evangelism.target);
+  const effRate = getRate(totals.effectiveEvangelism.current, totals.effectiveEvangelism.target);
+  const attRate = getRate(totals.attendance.current,          totals.attendance.target);
+  const bapRate = getRate(totals.baptism.current,             totals.baptism.target);
 
   const validRates = [evRate, effRate, attRate, bapRate].filter((_, i) =>
     [totals.evangelism, totals.effectiveEvangelism, totals.attendance, totals.baptism][i].target > 0
@@ -266,12 +371,14 @@ export function OverviewOverlay({ totals, coords: c, styles, getRate, onUpdateCo
   ];
 
   const gaugeItems: { key: OverviewCoordKey; rate: number; color: string }[] = [
-    { key: 'evGauge',   rate: evRate,      color: '#e84393' },
-    { key: 'effGauge',  rate: effRate,     color: '#2ecc71' },
-    { key: 'attGauge',  rate: attRate,     color: '#e67e22' },
-    { key: 'bapGauge',  rate: bapRate,     color: '#3498db' },
-    { key: 'gauge',     rate: overallRate, color: '#9b59b6' },
+    { key: 'evGauge',  rate: evRate,      color: '#e84393' },
+    { key: 'effGauge', rate: effRate,     color: '#2ecc71' },
+    { key: 'attGauge', rate: attRate,     color: '#e67e22' },
+    { key: 'bapGauge', rate: bapRate,     color: '#3498db' },
+    { key: 'gauge',    rate: overallRate, color: '#9b59b6' },
   ];
+
+  const GAUGE_KEYS = new Set(['evGauge', 'effGauge', 'attGauge', 'bapGauge', 'gauge']);
 
   return (
     <div style={{ width: '100%', position: 'relative' }}>
@@ -285,7 +392,7 @@ export function OverviewOverlay({ totals, coords: c, styles, getRate, onUpdateCo
         </div>
       )}
 
-      <div className="overlay-container" style={{ position: 'relative', width: '100%' }}>
+      <div ref={containerRef} className="overlay-container" style={{ position: 'relative', width: '100%' }}>
         <img src={OVERVIEW_IMAGE} alt="전체 현황" style={{ width: '100%', height: 'auto', display: 'block' }} draggable={false} />
 
         {displayItems.map(({ key, text }) => (
@@ -297,6 +404,14 @@ export function OverviewOverlay({ totals, coords: c, styles, getRate, onUpdateCo
           />
         ))}
 
+        <DraggableDday
+          coords={c.dday} style={getStyle('dday')}
+          editMode={editMode} selectedKey={selectedKey}
+          dday={dday}
+          onDragEnd={handleDragEnd} onSelect={handleSelect}
+          onUpdateDday={onUpdateDday}
+        />
+
         {gaugeItems.map(({ key, rate, color }) => (
           <DraggableGauge
             key={key} coordKey={key} rate={rate}
@@ -306,7 +421,7 @@ export function OverviewOverlay({ totals, coords: c, styles, getRate, onUpdateCo
           />
         ))}
 
-        {editMode && selectedKey && !['evGauge','effGauge','attGauge','bapGauge','gauge'].includes(selectedKey) && (
+        {editMode && selectedKey && !GAUGE_KEYS.has(selectedKey) && (
           <StylePanel
             coordKey={selectedKey}
             color={getStyle(selectedKey).color}
@@ -324,6 +439,9 @@ export function OverviewOverlay({ totals, coords: c, styles, getRate, onUpdateCo
           onClick={() => { setEditMode(!editMode); setSelectedKey(null); }}
         >
           {editMode ? '✅ 편집 완료' : '🎯 위치 편집'}
+        </button>
+        <button className="ov-btn" onClick={handleSaveImage}>
+          📸 이미지 저장
         </button>
       </div>
     </div>
