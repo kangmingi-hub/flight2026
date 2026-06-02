@@ -14,7 +14,7 @@ export default function App() {
   const {
     clubs, updateStat, updateCoord, updateStyle,
     overviewCoords, overviewStyles, updateOverviewCoord, updateOverviewStyle,
-    addDailyRecord, getOverallRate, getRate, getTotals,
+    addDailyRecord, getOverallRate, getRate, getTotals, dday, updateDday
   } = useClubs();
   const [activeTab, setActiveTab] = useState('overview');
   const activeClub = clubs.find(c => c.id === activeTab);
@@ -63,6 +63,8 @@ export default function App() {
             getRate={getRate}
             onUpdateCoord={(key: OverviewCoordKey, coords: number[]) => updateOverviewCoord(key, coords)}
             onUpdateStyle={(key: OverviewCoordKey, style: Partial<{ color: string; fontSize: number }>) => updateOverviewStyle(key, style)}
+            dday={dday}
+            onUpdateDday={updateDday}
           />
         ) : activeClub ? (
           <ClubOverlay
