@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Club, StatKey, DailyRecord, OverlayCoords, OverlayStyles, CoordKey } from '../types';
-import { INITIAL_CLUBS } from '../data/clubs';
+import { Club, StatKey, DailyRecord, OverlayCoords, OverlayStyles, OverviewCoords, CoordKey, OverviewCoordKey } from '../types';
+import { INITIAL_CLUBS, OVERVIEW_COORDS } from '../data/clubs';
 
 const STORAGE_KEY = 'flight2026_v2';
 const COORDS_KEY = 'flight2026_coords';
 const STYLES_KEY = 'flight2026_styles';
+const OVERVIEW_COORDS_KEY = 'flight2026_overview_coords';
+const OVERVIEW_STYLES_KEY = 'flight2026_overview_styles';
 
 function loadClubs(): Club[] {
   try {
@@ -13,7 +15,6 @@ function loadClubs(): Club[] {
     const rawStyles = localStorage.getItem(STYLES_KEY);
     const savedCoords: Record<string, OverlayCoords> = rawCoords ? JSON.parse(rawCoords) : {};
     const savedStyles: Record<string, OverlayStyles> = rawStyles ? JSON.parse(rawStyles) : {};
-
     if (!raw) {
       return INITIAL_CLUBS.map(club => ({
         ...club,
@@ -33,8 +34,28 @@ function loadClubs(): Club[] {
   }
 }
 
+function loadOverviewCoords(): OverviewCoords {
+  try {
+    const raw = localStorage.getItem(OVERVIEW_COORDS_KEY);
+    return raw ? JSON.parse(raw) : OVERVIEW_COORDS;
+  } catch {
+    return OVERVIEW_COORDS;
+  }
+}
+
+function loadOverviewStyles(): OverlayStyles {
+  try {
+    const raw = localStorage.getItem(OVERVIEW_STYLES_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
 export function useClubs() {
   const [clubs, setClubs] = useState<Club[]>(loadClubs);
+  const [overviewCoords, setOverviewCoords] = useState<OverviewCoords>(loadOverviewCoords);
+  const [overviewStyles, setOverviewStyles] = useState<OverlayStyles>(loadOverviewStyles);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(clubs));
@@ -43,9 +64,7 @@ export function useClubs() {
   const updateCoord = useCallback((clubId: string, key: CoordKey, coords: number[]) => {
     setClubs(prev => {
       const next = prev.map(club =>
-        club.id === clubId
-          ? { ...club, coords: { ...club.coords, [key]: coords } }
-          : club
+        club.id === clubId ? { ...club, coords: { ...club.coords, [key]: coords } } : club
       );
       const coordMap: Record<string, OverlayCoords> = {};
       next.forEach(c => { coordMap[c.id] = c.coords; });
@@ -64,6 +83,23 @@ export function useClubs() {
       const styleMap: Record<string, OverlayStyles> = {};
       next.forEach(c => { styleMap[c.id] = c.styles; });
       localStorage.setItem(STYLES_KEY, JSON.stringify(styleMap));
+      return next;
+    });
+  }, []);
+
+  const updateOverviewCoord = useCallback((key: OverviewCoordKey, coords: number[]) => {
+    setOverviewCoords(prev => {
+      const next = { ...prev, [key]: coords };
+      localStorage.setItem(OVERVIEW_COORDS_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  const updateOverviewStyle = useCallback((key: OverviewCoordKey, style: Partial<{ color: string; fontSize: number }>) => {
+    setOverviewStyles(prev => {
+      const prevStyle = prev[key] ?? { color: '#3a2a0a', fontSize: 13 };
+      const next = { ...prev, [key]: { ...prevStyle, ...style } };
+      localStorage.setItem(OVERVIEW_STYLES_KEY, JSON.stringify(next));
       return next;
     });
   }, []);
@@ -122,5 +158,26 @@ export function useClubs() {
     return Math.min(Math.round((current / target) * 100), 100);
   }, []);
 
-  return { clubs, updateStat, updateCoord, updateStyle, addDailyRecord, getOverallRate, getRate };
+  const getTotals = useCallback(() => {
+    return clubs.reduce(
+      (acc, club) => ({
+        evangelism:          { current: acc.evangelism.current + club.stats.evangelism.current,                   target: acc.evangelism.target + club.stats.evangelism.target },
+        effectiveEvangelism: { current: acc.effectiveEvangelism.current + club.stats.effectiveEvangelism.current, target: acc.effectiveEvangelism.target + club.stats.effectiveEvangelism.target },
+        attendance:          { current: acc.attendance.current + club.stats.attendance.current,                   target: acc.attendance.target + club.stats.attendance.target },
+        baptism:             { current: acc.baptism.current + club.stats.baptism.current,                         target: acc.baptism.target + club.stats.baptism.target },
+      }),
+      {
+        evangelism:          { current: 0, target: 0 },
+        effectiveEvangelism: { current: 0, target: 0 },
+        attendance:          { current: 0, target: 0 },
+        baptism:             { current: 0, target: 0 },
+      }
+    );
+  }, [clubs]);
+
+  return {
+    clubs, updateStat, updateCoord, updateStyle,
+    overviewCoords, overviewStyles, updateOverviewCoord, updateOverviewStyle,
+    addDailyRecord, getOverallRate, getRate, getTotals,
+  };
 }
