@@ -1,17 +1,28 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Club, StatKey, DailyRecord } from '../types';
+import { Club, StatKey, DailyRecord, OverlayCoords, CoordKey } from '../types';
 import { INITIAL_CLUBS } from '../data/clubs';
 
 const STORAGE_KEY = 'flight2026_v2';
+const COORDS_KEY = 'flight2026_coords';
 
 function loadClubs(): Club[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return INITIAL_CLUBS;
+    const rawCoords = localStorage.getItem(COORDS_KEY);
+    const savedCoords: Record<string, OverlayCoords> = rawCoords ? JSON.parse(rawCoords) : {};
+
+    if (!raw) {
+      return INITIAL_CLUBS.map(club => ({
+        ...club,
+        coords: savedCoords[club.id] ?? club.coords,
+      }));
+    }
     const saved = JSON.parse(raw) as Club[];
     return INITIAL_CLUBS.map(init => {
       const found = saved.find(s => s.id === init.id);
-      return found ? { ...init, stats: found.stats, records: found.records } : init;
+      return found
+        ? { ...init, stats: found.stats, records: found.records, coords: savedCoords[init.id] ?? init.coords }
+        : { ...init, coords: savedCoords[init.id] ?? init.coords };
     });
   } catch {
     return INITIAL_CLUBS;
@@ -24,6 +35,22 @@ export function useClubs() {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(clubs));
   }, [clubs]);
+
+  // 좌표 업데이트 — 동아리별로 coords만 따로 저장
+  const updateCoord = useCallback((clubId: string, key: CoordKey, coords: number[]) => {
+    setClubs(prev => {
+      const next = prev.map(club =>
+        club.id === clubId
+          ? { ...club, coords: { ...club.coords, [key]: coords } }
+          : club
+      );
+      // coords만 별도 키에 저장
+      const coordMap: Record<string, OverlayCoords> = {};
+      next.forEach(c => { coordMap[c.id] = c.coords; });
+      localStorage.setItem(COORDS_KEY, JSON.stringify(coordMap));
+      return next;
+    });
+  }, []);
 
   const updateStat = useCallback((clubId: string, stat: StatKey, field: 'current' | 'target', value: number) => {
     setClubs(prev =>
@@ -79,5 +106,5 @@ export function useClubs() {
     return Math.min(Math.round((current / target) * 100), 100);
   }, []);
 
-  return { clubs, updateStat, addDailyRecord, getOverallRate, getRate };
+  return { clubs, updateStat, updateCoord, addDailyRecord, getOverallRate, getRate };
 }
