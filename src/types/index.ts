@@ -25,12 +25,21 @@ export interface OverlayCoords {
   gauge: number[];
   gaugePct: number[];
 }
+
+// 각 칸의 스타일 (색상, 크기)
+export interface OverlayStyle {
+  color: string;
+  fontSize: number; // px 단위
+}
+export type OverlayStyles = Partial<Record<keyof OverlayCoords, OverlayStyle>>;
+
 export interface Club {
   id: string;
   name: string;
   slogan: string;
   image: string;
   coords: OverlayCoords;
+  styles: OverlayStyles;
   stats: {
     evangelism: ClubStats;
     effectiveEvangelism: ClubStats;
