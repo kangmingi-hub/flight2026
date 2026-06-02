@@ -19,6 +19,7 @@ const baseCoords: OverlayCoords = {
   bapGauge: [69.5,  83.0,  22.0,  1.8],
   gauge:    [27.91, 88.0,  44.0,  2.47],
   gaugePct: [58.31, 74.35, 4.5,   3.65],
+  dday: [45.0, 18.0, 10.0, 4.0],
 };
 
 export const OVERVIEW_COORDS: OverviewCoords = { ...baseCoords };
