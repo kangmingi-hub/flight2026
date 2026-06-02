@@ -10,7 +10,7 @@ const CLUB_COLORS: Record<string, string> = {
 };
 
 export default function App() {
-  const { clubs, updateStat, updateCoord, addDailyRecord, getOverallRate, getRate } = useClubs();
+  const { clubs, updateStat, updateCoord, updateStyle, addDailyRecord, getOverallRate, getRate } = useClubs();
   const [activeTab, setActiveTab] = useState(clubs[0]?.id ?? '');
   const activeClub = clubs.find(c => c.id === activeTab);
 
@@ -52,6 +52,9 @@ export default function App() {
             }
             onUpdateCoord={(key: CoordKey, coords: number[]) =>
               updateCoord(activeClub.id, key, coords)
+            }
+            onUpdateStyle={(key: CoordKey, style: Partial<{ color: string; fontSize: number }>) =>
+              updateStyle(activeClub.id, key, style)
             }
             onAddRecord={record => addDailyRecord(activeClub.id, record)}
           />
