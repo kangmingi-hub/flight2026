@@ -380,4 +380,127 @@ export function ClubOverlay({ club, overallRate, getRate, onUpdateStat, onUpdate
         <div ref={gaugeRef} style={{
           position: 'absolute', left: `${c.gauge[0]}%`, top: `${c.gauge[1]}%`,
           width: `${c.gauge[2]}%`, height: `${c.gauge[3]}%`,
-          overflow: 'hidde
+          overflow: 'hidden', borderRadius: 99, zIndex: 10,
+          cursor: editMode ? 'grab' : 'default',
+          outline: editMode ? (selectedKey === 'gauge' ? '2px solid #e84393' : '2px dashed #e84393') : 'none',
+          boxSizing: 'border-box',
+        }} onMouseDown={handleGaugeMouseDown}>
+          <div style={{
+            height: '100%', width: `${gaugeWidth}%`,
+            background: 'linear-gradient(90deg, #e84393, #ff6b35)',
+            borderRadius: 99,
+            transition: 'width 0.8s cubic-bezier(0.34,1.56,0.64,1)',
+          }} />
+
+          {/* 리사이즈 핸들 4방향 */}
+          {editMode && (<>
+            <div onMouseDown={e => handleResizeMouseDown(e, 'right')}
+              style={{ position: 'absolute', right: 0, top: 0, width: 8, height: '100%', cursor: 'ew-resize', zIndex: 30, background: 'rgba(232,67,147,0.4)', borderRadius: '0 99px 99px 0' }} />
+            <div onMouseDown={e => handleResizeMouseDown(e, 'left')}
+              style={{ position: 'absolute', left: 0, top: 0, width: 8, height: '100%', cursor: 'ew-resize', zIndex: 30, background: 'rgba(232,67,147,0.4)', borderRadius: '99px 0 0 99px' }} />
+            <div onMouseDown={e => handleResizeMouseDown(e, 'bottom')}
+              style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', height: 4, cursor: 'ns-resize', zIndex: 30, background: 'rgba(232,67,147,0.4)' }} />
+            <div onMouseDown={e => handleResizeMouseDown(e, 'top')}
+              style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: 4, cursor: 'ns-resize', zIndex: 30, background: 'rgba(232,67,147,0.4)' }} />
+          </>)}
+        </div>
+
+        {/* 스타일 편집 패널 */}
+        {editMode && selectedKey && selectedKey !== 'gauge' && (
+          <StylePanel
+            coordKey={selectedKey}
+            color={getStyle(selectedKey).color}
+            fontSize={getStyle(selectedKey).fontSize}
+            onChange={style => onUpdateStyle(selectedKey, style)}
+            onClose={() => setSelectedKey(null)}
+          />
+        )}
+      </div>
+
+      {/* 하단 버튼 */}
+      <div style={{ display: 'flex', gap: 8, padding: '8px 0', justifyContent: 'flex-end' }}>
+        <button
+          className="ov-btn"
+          style={editMode ? { background: '#e84393', color: '#fff', border: 'none' } : {}}
+          onClick={() => { setEditMode(!editMode); setSelectedKey(null); }}
+        >
+          {editMode ? '✅ 편집 완료' : '🎯 위치 편집'}
+        </button>
+        <button className="ov-btn" onClick={() => setShowRecords(!showRecords)}>📋 기록</button>
+        <button className="ov-btn ov-btn-primary" onClick={() => setShowInput(true)}>✏️ 오늘 수치 입력</button>
+      </div>
+
+      {showRecords && club.records.length > 0 && (
+        <div className="records-panel">
+          <table className="records-table">
+            <thead>
+              <tr><th>날짜</th><th>단순전도</th><th>유효전도</th><th>출석</th><th>침례</th></tr>
+            </thead>
+            <tbody>
+              {[...club.records].reverse().map(r => (
+                <tr key={r.date}>
+                  <td>{r.date}</td><td>{r.evangelism}</td>
+                  <td>{r.effectiveEvangelism}</td><td>{r.attendance}</td><td>{r.baptism}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {showInput && (
+        <DailyModal club={club} onSave={r => { onAddRecord(r); setShowInput(false); }} onClose={() => setShowInput(false)} />
+      )}
+    </div>
+  );
+}
+
+function DailyModal({ club, onSave, onClose }: { club: Club; onSave: (r: DailyRecord) => void; onClose: () => void }) {
+  const today = new Date().toISOString().split('T')[0];
+  const existing = club.records.find(r => r.date === today);
+  const [form, setForm] = useState<DailyRecord>({
+    date: today,
+    evangelism: existing?.evangelism ?? 0,
+    effectiveEvangelism: existing?.effectiveEvangelism ?? 0,
+    attendance: existing?.attendance ?? 0,
+    baptism: existing?.baptism ?? 0,
+  });
+  const fields: { key: keyof Omit<DailyRecord, 'date'>; label: string }[] = [
+    { key: 'evangelism', label: '단순전도' },
+    { key: 'effectiveEvangelism', label: '유효전도' },
+    { key: 'attendance', label: '출석' },
+    { key: 'baptism', label: '침례' },
+  ];
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <h2>일일 수치 입력</h2>
+          <p className="modal-subtitle">{club.name}</p>
+        </div>
+        <div className="modal-body">
+          <label className="date-input-group">
+            <span>날짜</span>
+            <input type="date" value={form.date}
+              onChange={e => {
+                const d = e.target.value;
+                const found = club.records.find(r => r.date === d);
+                setForm(found ? { ...found } : { date: d, evangelism: 0, effectiveEvangelism: 0, attendance: 0, baptism: 0 });
+              }} />
+          </label>
+          {fields.map(f => (
+            <div key={f.key} className="daily-field">
+              <span>{f.label}</span>
+              <input type="number" min={0} value={form[f.key]}
+                onChange={e => setForm(prev => ({ ...prev, [f.key]: Number(e.target.value) }))} />
+            </div>
+          ))}
+        </div>
+        <div className="modal-footer">
+          <button className="btn-secondary" onClick={onClose}>취소</button>
+          <button className="btn-primary" onClick={() => onSave(form)}>저장</button>
+        </div>
+      </div>
+    </div>
+  );
+}
