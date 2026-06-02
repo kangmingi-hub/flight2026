@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useClubs } from './hooks/useClubs';
 import { ClubOverlay } from './components/ClubOverlay';
-import { StatKey } from './types';
+import { StatKey, CoordKey } from './types';
 
 const CLUB_COLORS: Record<string, string> = {
   blossom: '#e84393', evergreen: '#2ecc71', atoz: '#c0820a', toy: '#e74c3c',
@@ -10,7 +10,7 @@ const CLUB_COLORS: Record<string, string> = {
 };
 
 export default function App() {
-  const { clubs, updateStat, addDailyRecord, getOverallRate, getRate } = useClubs();
+  const { clubs, updateStat, updateCoord, addDailyRecord, getOverallRate, getRate } = useClubs();
   const [activeTab, setActiveTab] = useState(clubs[0]?.id ?? '');
   const activeClub = clubs.find(c => c.id === activeTab);
 
@@ -40,7 +40,6 @@ export default function App() {
           })}
         </div>
       </nav>
-
       <main className="main-content">
         {activeClub && (
           <ClubOverlay
@@ -50,6 +49,9 @@ export default function App() {
             getRate={getRate}
             onUpdateStat={(stat: StatKey, field: 'current' | 'target', value: number) =>
               updateStat(activeClub.id, stat, field, value)
+            }
+            onUpdateCoord={(key: CoordKey, coords: number[]) =>
+              updateCoord(activeClub.id, key, coords)
             }
             onAddRecord={record => addDailyRecord(activeClub.id, record)}
           />
