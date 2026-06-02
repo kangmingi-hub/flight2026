@@ -1,0 +1,158 @@
+import { Club } from '../types';
+
+export const INITIAL_CLUBS: Club[] = [
+  {
+    id: 'blossom',
+    name: 'Blossom',
+    slogan: '캠퍼스에 생명의 꽃을 피우자',
+    image: '/images/blossom.png',
+    targets: { evangelism: 0, effectiveEvangelism: 0, attendance: 0, baptism: 0 },
+    stats: {
+      evangelism: { current: 0, target: 0 },
+      effectiveEvangelism: { current: 0, target: 0 },
+      attendance: { current: 0, target: 0 },
+      baptism: { current: 0, target: 0 },
+    },
+    records: [],
+  },
+  {
+    id: 'evergreen',
+    name: 'Evergreen',
+    slogan: '캠퍼스를 푸르게 물들이자',
+    image: '/images/evergreen.png',
+    targets: { evangelism: 0, effectiveEvangelism: 0, attendance: 0, baptism: 0 },
+    stats: {
+      evangelism: { current: 0, target: 0 },
+      effectiveEvangelism: { current: 0, target: 0 },
+      attendance: { current: 0, target: 0 },
+      baptism: { current: 0, target: 0 },
+    },
+    records: [],
+  },
+  {
+    id: 'atoz',
+    name: 'A to Z',
+    slogan: 'From A to Z! 세상을 바꾸는 한 사람',
+    image: '/images/atoz.png',
+    targets: { evangelism: 0, effectiveEvangelism: 0, attendance: 0, baptism: 0 },
+    stats: {
+      evangelism: { current: 0, target: 0 },
+      effectiveEvangelism: { current: 0, target: 0 },
+      attendance: { current: 0, target: 0 },
+      baptism: { current: 0, target: 0 },
+    },
+    records: [],
+  },
+  {
+    id: 'toy',
+    name: 'TOY',
+    slogan: '캠퍼스를 빛내는 우리의 발걸음',
+    image: '/images/toy.png',
+    targets: { evangelism: 0, effectiveEvangelism: 0, attendance: 0, baptism: 0 },
+    stats: {
+      evangelism: { current: 0, target: 0 },
+      effectiveEvangelism: { current: 0, target: 0 },
+      attendance: { current: 0, target: 0 },
+      baptism: { current: 0, target: 0 },
+    },
+    records: [],
+  },
+  {
+    id: 'thefirst',
+    name: 'The First',
+    slogan: '캠퍼스를 빛으로 물들이자',
+    image: '/images/thefirst.png',
+    targets: { evangelism: 0, effectiveEvangelism: 0, attendance: 0, baptism: 0 },
+    stats: {
+      evangelism: { current: 0, target: 0 },
+      effectiveEvangelism: { current: 0, target: 0 },
+      attendance: { current: 0, target: 0 },
+      baptism: { current: 0, target: 0 },
+    },
+    records: [],
+  },
+  {
+    id: 'pearlfect',
+    name: 'Pearlfect',
+    slogan: '진주같은 열매로써 하나님께 봉헌하자',
+    image: '/images/pearlfect.png',
+    targets: { evangelism: 0, effectiveEvangelism: 0, attendance: 0, baptism: 0 },
+    stats: {
+      evangelism: { current: 0, target: 0 },
+      effectiveEvangelism: { current: 0, target: 0 },
+      attendance: { current: 0, target: 0 },
+      baptism: { current: 0, target: 0 },
+    },
+    records: [],
+  },
+  {
+    id: 'bpm',
+    name: 'BPM',
+    slogan: '캠퍼스의 심장을 뛰게 하자',
+    image: '/images/bpm.png',
+    targets: { evangelism: 0, effectiveEvangelism: 0, attendance: 0, baptism: 0 },
+    stats: {
+      evangelism: { current: 0, target: 0 },
+      effectiveEvangelism: { current: 0, target: 0 },
+      attendance: { current: 0, target: 0 },
+      baptism: { current: 0, target: 0 },
+    },
+    records: [],
+  },
+  {
+    id: 'psallo',
+    name: 'Psallo',
+    slogan: '캠퍼스에서 하나님께 찬양을',
+    image: '/images/psallo.png',
+    targets: { evangelism: 0, effectiveEvangelism: 0, attendance: 0, baptism: 0 },
+    stats: {
+      evangelism: { current: 0, target: 0 },
+      effectiveEvangelism: { current: 0, target: 0 },
+      attendance: { current: 0, target: 0 },
+      baptism: { current: 0, target: 0 },
+    },
+    records: [],
+  },
+  {
+    id: 'yitc',
+    name: 'YITC',
+    slogan: '캠퍼스 복음 완성을 위하여',
+    image: '/images/yitc.png',
+    targets: { evangelism: 0, effectiveEvangelism: 0, attendance: 0, baptism: 0 },
+    stats: {
+      evangelism: { current: 0, target: 0 },
+      effectiveEvangelism: { current: 0, target: 0 },
+      attendance: { current: 0, target: 0 },
+      baptism: { current: 0, target: 0 },
+    },
+    records: [],
+  },
+  {
+    id: 'ebs',
+    name: 'EBS',
+    slogan: '캠퍼스에 영원한 하나님의 말씀을',
+    image: '/images/ebs.png',
+    targets: { evangelism: 0, effectiveEvangelism: 0, attendance: 0, baptism: 0 },
+    stats: {
+      evangelism: { current: 0, target: 0 },
+      effectiveEvangelism: { current: 0, target: 0 },
+      attendance: { current: 0, target: 0 },
+      baptism: { current: 0, target: 0 },
+    },
+    records: [],
+  },
+];
+
+export const STAT_LABELS: Record<string, string> = {
+  evangelism: '단순전도',
+  effectiveEvangelism: '유효전도',
+  attendance: '출석',
+  baptism: '침례',
+};
+
+export const STAT_SUBLABELS: Record<string, string> = {
+  evangelism: 'Simple Evangelism',
+  effectiveEvangelism: 'Effective Evangelism',
+  attendance: 'Attendance',
+  baptism: 'Baptism',
+};
