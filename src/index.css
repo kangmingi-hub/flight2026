@@ -1,0 +1,85 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body, #root { height: 100%; }
+body {
+  font-family: 'Noto Sans KR', sans-serif;
+  background: #111;
+  color: #f0f0f5;
+  font-size: 14px;
+}
+
+.app { display: flex; flex-direction: column; min-height: 100vh; }
+
+/* Tab bar */
+.tab-bar {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(10,10,14,0.95);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  padding: 0 1rem;
+  display: flex; align-items: center; gap: 1rem;
+}
+.tab-title {
+  font-size: 13px; font-weight: 700;
+  color: rgba(255,255,255,0.5);
+  white-space: nowrap; flex-shrink: 0;
+}
+.tab-list { display: flex; overflow-x: auto; scrollbar-width: none; }
+.tab-list::-webkit-scrollbar { display: none; }
+.tab-btn {
+  background: none; border: none;
+  border-bottom: 2px solid transparent;
+  color: rgba(255,255,255,0.45);
+  padding: 0.75rem 0.85rem;
+  font-family: 'Noto Sans KR', sans-serif;
+  font-size: 13px; font-weight: 500;
+  cursor: pointer; white-space: nowrap;
+  transition: color 0.2s, border-color 0.2s;
+  display: flex; align-items: center; gap: 5px;
+}
+.tab-btn:hover { color: #fff; }
+.tab-btn.active { color: #fff; font-weight: 700; }
+.tab-badge { font-size: 11px; padding: 2px 5px; border-radius: 20px; font-weight: 700; }
+
+/* Main content - image fills width */
+.main-content { max-width: 1200px; margin: 0 auto; width: 100%; padding: 1rem; }
+
+/* Overlay buttons */
+.ov-btn {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: #fff; border-radius: 8px;
+  padding: 7px 14px; font-size: 13px;
+  font-family: 'Noto Sans KR', sans-serif;
+  cursor: pointer; transition: background 0.2s;
+}
+.ov-btn:hover { background: rgba(255,255,255,0.15); }
+.ov-btn-primary { background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.25); font-weight: 700; }
+
+/* Records */
+.records-panel { background: rgba(26,26,34,0.9); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; overflow: hidden; margin-top: 8px; }
+.records-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.records-table th, .records-table td { padding: 8px 14px; text-align: right; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.records-table th:first-child, .records-table td:first-child { text-align: left; }
+.records-table th { font-size: 11px; color: rgba(255,255,255,0.45); font-weight: 500; background: rgba(26,26,34,0.95); }
+.records-table tr:last-child td { border-bottom: none; }
+
+/* Modal */
+.modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.65); backdrop-filter: blur(4px); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+.modal { background: #1a1a22; border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; width: 100%; max-width: 380px; overflow: hidden; }
+.modal-header { padding: 1.1rem 1.4rem; border-bottom: 1px solid rgba(255,255,255,0.08); }
+.modal-header h2 { font-size: 16px; font-weight: 700; }
+.modal-subtitle { font-size: 12px; color: rgba(255,255,255,0.45); margin-top: 2px; }
+.modal-body { padding: 1.1rem 1.4rem; display: flex; flex-direction: column; gap: 10px; }
+.date-input-group { display: flex; align-items: center; gap: 10px; }
+.date-input-group span { font-size: 13px; color: rgba(255,255,255,0.5); width: 55px; flex-shrink: 0; }
+.date-input-group input { flex: 1; background: #22222e; border: 1px solid rgba(255,255,255,0.1); border-radius: 7px; color: #fff; font-family: 'Noto Sans KR', sans-serif; font-size: 13px; padding: 7px 10px; }
+.daily-field { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.daily-field span { font-size: 14px; font-weight: 500; }
+.daily-field input { background: #22222e; border: 1px solid rgba(255,255,255,0.1); border-radius: 7px; color: #fff; font-family: 'Noto Sans KR', sans-serif; font-size: 16px; font-weight: 700; padding: 7px 10px; width: 100px; text-align: right; }
+.daily-field input:focus { outline: none; border-color: rgba(255,255,255,0.3); }
+.modal-footer { padding: 0.9rem 1.4rem; border-top: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: flex-end; gap: 8px; }
+.btn-secondary { background: none; border: 1px solid rgba(255,255,255,0.12); color: rgba(255,255,255,0.5); border-radius: 7px; padding: 7px 16px; font-family: 'Noto Sans KR', sans-serif; font-size: 13px; cursor: pointer; }
+.btn-primary { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: #fff; border-radius: 7px; padding: 7px 20px; font-family: 'Noto Sans KR', sans-serif; font-size: 13px; font-weight: 700; cursor: pointer; }
+.btn-primary:hover { background: rgba(255,255,255,0.18); }
