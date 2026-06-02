@@ -1,4 +1,4 @@
-import { Club, OverlayCoords, OverlayStyles } from '../types';
+import { Club, OverlayCoords } from '../types';
 
 const blossomCoords: OverlayCoords = {
   evHyun:  [30.18, 40.76, 6.39, 3.91],
