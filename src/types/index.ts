@@ -28,6 +28,7 @@ export interface OverlayCoords {
   bapGauge: number[];
   gauge: number[];
   gaugePct: number[];
+  dday: number[];
 }
 export interface OverlayStyle {
   color: string;
