@@ -27,8 +27,8 @@ function loadClubs(): Club[] {
     return INITIAL_CLUBS.map(init => {
       const found = saved.find(s => s.id === init.id);
       return found
-        ? { ...init, stats: found.stats, records: found.records, coords: savedCoords[init.id] ?? init.coords, styles: savedStyles[init.id] ?? init.styles }
-        : { ...init, coords: savedCoords[init.id] ?? init.coords, styles: savedStyles[init.id] ?? init.styles };
+        ? { ...init, stats: found.stats, records: found.records, coords: { ...init.coords, ...(savedCoords[init.id] ?? {}) }, styles: savedStyles[init.id] ?? init.styles }
+        : { ...init, coords: { ...init.coords, ...(savedCoords[init.id] ?? {}) }, styles: savedStyles[init.id] ?? init.styles };
     });
   } catch {
     return INITIAL_CLUBS;
@@ -38,7 +38,10 @@ function loadClubs(): Club[] {
 function loadOverviewCoords(): OverviewCoords {
   try {
     const raw = localStorage.getItem(OVERVIEW_COORDS_KEY);
-    return raw ? JSON.parse(raw) : OVERVIEW_COORDS;
+    if (!raw) return OVERVIEW_COORDS;
+    const parsed = JSON.parse(raw);
+    // 새 필드가 없으면 기본값으로 채움
+    return { ...OVERVIEW_COORDS, ...parsed };
   } catch {
     return OVERVIEW_COORDS;
   }
