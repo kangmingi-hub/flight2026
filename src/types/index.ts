@@ -13,26 +13,29 @@ export interface OverlayCoords {
   evHyun: number[];
   evMok: number[];
   evBogo: number[];
+  evGauge: number[];
   effHyun: number[];
   effMok: number[];
   effInter: number[];
+  effGauge: number[];
   attHyun: number[];
   attMok: number[];
   attEvent: number[];
+  attGauge: number[];
   bapHyun: number[];
   bapMok: number[];
   bapReg: number[];
+  bapGauge: number[];
   gauge: number[];
   gaugePct: number[];
 }
-
-// 각 칸의 스타일 (색상, 크기)
 export interface OverlayStyle {
   color: string;
-  fontSize: number; // px 단위
+  fontSize: number;
 }
 export type OverlayStyles = Partial<Record<keyof OverlayCoords, OverlayStyle>>;
-
+export type OverviewCoords = OverlayCoords;
+export type OverviewCoordKey = keyof OverviewCoords;
 export interface Club {
   id: string;
   name: string;
