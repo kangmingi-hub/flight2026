@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
+import html2canvas from 'html2canvas';
 import { Club, StatKey, DailyRecord, CoordKey } from '../types';
 
 const DEFAULT_COLOR = '#3a2a0a';
@@ -312,6 +313,17 @@ export function ClubOverlay({ club, overallRate, getRate, onUpdateStat, onUpdate
   const [selectedKey, setSelectedKey] = useState<CoordKey | null>(null);
   const c = club.coords;
 
+const containerRef = useRef<HTMLDivElement>(null);
+
+const handleSaveImage = useCallback(async () => {
+  if (!containerRef.current) return;
+  const canvas = await html2canvas(containerRef.current, { useCORS: true, scale: 2 });
+  const link = document.createElement('a');
+  link.download = `flight2026_${club.id}.png`;
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+}, [club.id]);
+  
   const getStyle = (key: CoordKey) => ({
     color: club.styles[key]?.color ?? DEFAULT_COLOR,
     fontSize: club.styles[key]?.fontSize ?? DEFAULT_FONTSIZE,
@@ -366,7 +378,7 @@ export function ClubOverlay({ club, overallRate, getRate, onUpdateStat, onUpdate
         </div>
       )}
 
-      <div className="overlay-container" style={{ position: 'relative', width: '100%' }}>
+      <div ref={containerRef} className="overlay-container" style={{ position: 'relative', width: '100%' }}>
         <img src={club.image} alt={club.name} style={{ width: '100%', height: 'auto', display: 'block' }} draggable={false} />
 
         {numberFields.map(({ key, stat, field }) => (
@@ -417,6 +429,7 @@ export function ClubOverlay({ club, overallRate, getRate, onUpdateStat, onUpdate
         >
           {editMode ? '✅ 편집 완료' : '🎯 위치 편집'}
         </button>
+        <button className="ov-btn" onClick={handleSaveImage}>📸 이미지 저장</button>
         <button className="ov-btn" onClick={() => setShowRecords(!showRecords)}>📋 기록</button>
         <button className="ov-btn ov-btn-primary" onClick={() => setShowInput(true)}>✏️ 오늘 수치 입력</button>
       </div>
