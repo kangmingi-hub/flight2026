@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useClubs } from './hooks/useClubs';
 import { ClubOverlay } from './components/ClubOverlay';
-import { StatKey, CoordKey } from './types';
+import { OverviewOverlay } from './components/OverviewOverlay';
+import { StatKey, CoordKey, OverviewCoordKey } from './types';
 
 const CLUB_COLORS: Record<string, string> = {
   blossom: '#e84393', evergreen: '#2ecc71', atoz: '#c0820a', toy: '#e74c3c',
@@ -10,8 +11,12 @@ const CLUB_COLORS: Record<string, string> = {
 };
 
 export default function App() {
-  const { clubs, updateStat, updateCoord, updateStyle, addDailyRecord, getOverallRate, getRate } = useClubs();
-  const [activeTab, setActiveTab] = useState(clubs[0]?.id ?? '');
+  const {
+    clubs, updateStat, updateCoord, updateStyle,
+    overviewCoords, overviewStyles, updateOverviewCoord, updateOverviewStyle,
+    addDailyRecord, getOverallRate, getRate, getTotals,
+  } = useClubs();
+  const [activeTab, setActiveTab] = useState('overview');
   const activeClub = clubs.find(c => c.id === activeTab);
 
   return (
@@ -19,6 +24,15 @@ export default function App() {
       <nav className="tab-bar">
         <div className="tab-title">✈️ 천국행 FLIGHT 2026</div>
         <div className="tab-list">
+          {/* 전체 현황 탭 */}
+          <button
+            className={`tab-btn ${activeTab === 'overview' ? 'active' : ''}`}
+            style={activeTab === 'overview' ? { borderBottomColor: '#4a90d9', color: '#4a90d9' } : {}}
+            onClick={() => setActiveTab('overview')}
+          >
+            🌐 전체 현황
+          </button>
+          {/* 동아리 탭들 */}
           {clubs.map(club => {
             const rate = getOverallRate(club);
             const color = CLUB_COLORS[club.id] ?? '#888';
@@ -41,7 +55,16 @@ export default function App() {
         </div>
       </nav>
       <main className="main-content">
-        {activeClub && (
+        {activeTab === 'overview' ? (
+          <OverviewOverlay
+            totals={getTotals()}
+            coords={overviewCoords}
+            styles={overviewStyles}
+            getRate={getRate}
+            onUpdateCoord={(key: OverviewCoordKey, coords: number[]) => updateOverviewCoord(key, coords)}
+            onUpdateStyle={(key: OverviewCoordKey, style: Partial<{ color: string; fontSize: number }>) => updateOverviewStyle(key, style)}
+          />
+        ) : activeClub ? (
           <ClubOverlay
             key={activeClub.id}
             club={activeClub}
@@ -58,7 +81,7 @@ export default function App() {
             }
             onAddRecord={record => addDailyRecord(activeClub.id, record)}
           />
-        )}
+        ) : null}
       </main>
     </div>
   );
