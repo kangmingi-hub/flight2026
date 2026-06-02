@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-import { Club, StatKey, DailyRecord, CoordKey, OverlayCoords } from '../types';
+import { Club, StatKey, DailyRecord, CoordKey } from '../types';
 
 interface Props {
   club: Club;
