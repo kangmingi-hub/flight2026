@@ -26,7 +26,7 @@ function StylePanel({
     effHyun: '유효전도 현황', effMok: '유효전도 목표', effInter: '유효전도 달성률', effGauge: '유효전도 게이지',
     attHyun: '출석 현황', attMok: '출석 목표', attEvent: '출석 달성률', attGauge: '출석 게이지',
     bapHyun: '침례 현황', bapMok: '침례 목표', bapReg: '침례 달성률', bapGauge: '침례 게이지',
-    gauge: '전체 게이지', gaugePct: '전체 달성률',
+    gauge: '전체 게이지', gaugePct: '전체 달성률', dday: 'D-Day',
   };
   return (
     <div style={{
