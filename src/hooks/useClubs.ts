@@ -7,6 +7,7 @@ const COORDS_KEY = 'flight2026_coords';
 const STYLES_KEY = 'flight2026_styles';
 const OVERVIEW_COORDS_KEY = 'flight2026_overview_coords';
 const OVERVIEW_STYLES_KEY = 'flight2026_overview_styles';
+const DDAY_KEY = 'flight2026_dday';
 
 function loadClubs(): Club[] {
   try {
