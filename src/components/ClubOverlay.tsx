@@ -1,125 +1,132 @@
 import { useState, useRef, useCallback } from 'react';
 import { Club, StatKey, DailyRecord, CoordKey } from '../types';
 
+const DEFAULT_COLOR = '#3a2a0a';
+const DEFAULT_FONTSIZE = 13;
+
 interface Props {
   club: Club;
   overallRate: number;
   getRate: (current: number, target: number) => number;
   onUpdateStat: (stat: StatKey, field: 'current' | 'target', value: number) => void;
   onUpdateCoord: (key: CoordKey, coords: number[]) => void;
+  onUpdateStyle: (key: CoordKey, style: Partial<{ color: string; fontSize: number }>) => void;
   onAddRecord: (record: DailyRecord) => void;
 }
 
-// 드래그 가능한 오버레이 숫자 입력 칸
-function DraggableOverlayNumber({
+// 선택된 칸의 스타일 편집 패널
+function StylePanel({
   coordKey,
-  value,
-  coords,
-  editMode,
+  color,
+  fontSize,
   onChange,
-  onDragEnd,
+  onClose,
 }: {
   coordKey: CoordKey;
-  value: number;
-  coords: number[];
-  editMode: boolean;
+  color: string;
+  fontSize: number;
+  onChange: (style: Partial<{ color: string; fontSize: number }>) => void;
+  onClose: () => void;
+}) {
+  const LABEL: Record<CoordKey, string> = {
+    evHyun: '단순전도 현황', evMok: '단순전도 목표', evBogo: '단순전도 달성률',
+    effHyun: '유효전도 현황', effMok: '유효전도 목표', effInter: '유효전도 달성률',
+    attHyun: '출석 현황', attMok: '출석 목표', attEvent: '출석 달성률',
+    bapHyun: '침례 현황', bapMok: '침례 목표', bapReg: '침례 달성률',
+    gauge: '게이지바', gaugePct: '달성률 숫자',
+  };
+  return (
+    <div style={{
+      position: 'absolute', top: 8, right: 8, zIndex: 50,
+      background: '#fff', border: '1px solid #e84393',
+      borderRadius: 10, padding: '12px 14px', minWidth: 200,
+      boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+        <span style={{ fontWeight: 700, fontSize: 13, color: '#e84393' }}>{LABEL[coordKey]}</span>
+        <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: '#888' }}>✕</button>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <label style={{ fontSize: 12, color: '#555', display: 'flex', alignItems: 'center', gap: 8 }}>
+          글자 색상
+          <input type="color" value={color}
+            onChange={e => onChange({ color: e.target.value })}
+            style={{ width: 36, height: 28, border: 'none', cursor: 'pointer', borderRadius: 4 }} />
+          <span style={{ fontSize: 11, color: '#999' }}>{color}</span>
+        </label>
+        <label style={{ fontSize: 12, color: '#555', display: 'flex', flexDirection: 'column', gap: 4 }}>
+          글자 크기: <strong>{fontSize}px</strong>
+          <input type="range" min={8} max={40} value={fontSize}
+            onChange={e => onChange({ fontSize: Number(e.target.value) })}
+            style={{ width: '100%' }} />
+        </label>
+      </div>
+    </div>
+  );
+}
+
+function DraggableOverlayNumber({
+  coordKey, value, coords, style: overlayStyle, editMode, selectedKey,
+  onChange, onDragEnd, onSelect,
+}: {
+  coordKey: CoordKey; value: number; coords: number[];
+  style: { color: string; fontSize: number };
+  editMode: boolean; selectedKey: CoordKey | null;
   onChange: (v: number) => void;
   onDragEnd: (key: CoordKey, newCoords: number[]) => void;
+  onSelect: (key: CoordKey) => void;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
-  const dragStart = useRef<{ mouseX: number; mouseY: number; origLeft: number; origTop: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const dragStart = useRef<{ mouseX: number; mouseY: number; origLeft: number; origTop: number } | null>(null);
+  const isSelected = selectedKey === coordKey;
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (!editMode) return;
     e.preventDefault();
+    onSelect(coordKey);
     const parent = (e.currentTarget as HTMLElement).closest('.overlay-container') as HTMLElement;
     if (!parent) return;
     const rect = parent.getBoundingClientRect();
-    dragStart.current = {
-      mouseX: e.clientX,
-      mouseY: e.clientY,
-      origLeft: coords[0],
-      origTop: coords[1],
-    };
-
+    dragStart.current = { mouseX: e.clientX, mouseY: e.clientY, origLeft: coords[0], origTop: coords[1] };
     const onMouseMove = (mv: MouseEvent) => {
-      if (!dragStart.current) return;
+      if (!dragStart.current || !containerRef.current) return;
       const dx = ((mv.clientX - dragStart.current.mouseX) / rect.width) * 100;
       const dy = ((mv.clientY - dragStart.current.mouseY) / rect.height) * 100;
-      const newLeft = Math.max(0, Math.min(95, dragStart.current.origLeft + dx));
-      const newTop = Math.max(0, Math.min(95, dragStart.current.origTop + dy));
-      if (containerRef.current) {
-        containerRef.current.style.left = `${newLeft}%`;
-        containerRef.current.style.top = `${newTop}%`;
-      }
+      containerRef.current.style.left = `${Math.max(0, Math.min(95, dragStart.current.origLeft + dx))}%`;
+      containerRef.current.style.top = `${Math.max(0, Math.min(95, dragStart.current.origTop + dy))}%`;
     };
-
     const onMouseUp = (mu: MouseEvent) => {
       if (!dragStart.current) return;
       const dx = ((mu.clientX - dragStart.current.mouseX) / rect.width) * 100;
       const dy = ((mu.clientY - dragStart.current.mouseY) / rect.height) * 100;
-      const newLeft = Math.max(0, Math.min(95, dragStart.current.origLeft + dx));
-      const newTop = Math.max(0, Math.min(95, dragStart.current.origTop + dy));
-      onDragEnd(coordKey, [newLeft, newTop, coords[2], coords[3]]);
+      onDragEnd(coordKey, [
+        Math.max(0, Math.min(95, dragStart.current.origLeft + dx)),
+        Math.max(0, Math.min(95, dragStart.current.origTop + dy)),
+        coords[2], coords[3],
+      ]);
       dragStart.current = null;
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
     };
-
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('mouseup', onMouseUp);
-  }, [editMode, coords, coordKey, onDragEnd]);
-
-  const style: React.CSSProperties = {
-    position: 'absolute',
-    left: `${coords[0]}%`,
-    top: `${coords[1]}%`,
-    width: `${coords[2]}%`,
-    height: `${coords[3]}%`,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: 'clamp(9px, 1.4vw, 15px)',
-    fontWeight: 700,
-    zIndex: 10,
-    borderRadius: 3,
-    cursor: editMode ? 'grab' : 'pointer',
-    outline: editMode ? '2px dashed #e84393' : 'none',
-    background: editMode ? 'rgba(232,67,147,0.08)' : 'transparent',
-    userSelect: 'none',
-  };
+  }, [editMode, coords, coordKey, onDragEnd, onSelect]);
 
   if (editing && !editMode) {
     return (
-      <input
-        autoFocus
-        type="number"
-        min={0}
-        value={draft}
+      <input autoFocus type="number" min={0} value={draft}
         style={{
-          position: 'absolute',
-          left: `${coords[0]}%`,
-          top: `${coords[1]}%`,
-          width: `${coords[2]}%`,
-          height: `${coords[3]}%`,
-          background: 'rgba(255,255,230,0.92)',
-          border: '2px solid #c0820a',
-          borderRadius: 3,
-          textAlign: 'center',
-          fontSize: 'clamp(9px, 1.4vw, 15px)',
-          fontWeight: 700,
-          color: '#333',
-          padding: 0,
-          outline: 'none',
-          zIndex: 20,
+          position: 'absolute', left: `${coords[0]}%`, top: `${coords[1]}%`,
+          width: `${coords[2]}%`, height: `${coords[3]}%`,
+          background: 'rgba(255,255,230,0.92)', border: '2px solid #c0820a',
+          borderRadius: 3, textAlign: 'center',
+          fontSize: overlayStyle.fontSize, fontWeight: 700, color: '#333',
+          padding: 0, outline: 'none', zIndex: 20,
         }}
         onChange={e => setDraft(e.target.value)}
-        onBlur={() => {
-          onChange(Math.max(0, Number(draft) || 0));
-          setEditing(false);
-        }}
+        onBlur={() => { onChange(Math.max(0, Number(draft) || 0)); setEditing(false); }}
         onKeyDown={e => {
           if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
           if (e.key === 'Escape') setEditing(false);
@@ -129,133 +136,137 @@ function DraggableOverlayNumber({
   }
 
   return (
-    <div
-      ref={containerRef}
-      style={style}
-      title={editMode ? '드래그해서 위치 조정' : '클릭해서 수정'}
+    <div ref={containerRef} style={{
+      position: 'absolute', left: `${coords[0]}%`, top: `${coords[1]}%`,
+      width: `${coords[2]}%`, height: `${coords[3]}%`,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: overlayStyle.fontSize, fontWeight: 700, color: overlayStyle.color,
+      cursor: editMode ? 'grab' : 'pointer', zIndex: 10, borderRadius: 3,
+      outline: editMode ? (isSelected ? '2px solid #e84393' : '2px dashed #e84393') : 'none',
+      background: editMode ? (isSelected ? 'rgba(232,67,147,0.15)' : 'rgba(232,67,147,0.06)') : 'transparent',
+      userSelect: 'none',
+    }}
+      title={editMode ? '드래그: 이동 / 클릭: 스타일 편집' : '클릭해서 수정'}
       onMouseDown={handleMouseDown}
       onClick={() => { if (!editMode) { setDraft(String(value)); setEditing(true); } }}
       onMouseEnter={e => { if (!editMode) e.currentTarget.style.background = 'rgba(255,255,200,0.7)'; }}
       onMouseLeave={e => { if (!editMode) e.currentTarget.style.background = 'transparent'; }}
     >
-      {editMode ? (coordKey as string).slice(0, 3) : (value || '')}
+      {value || ''}
     </div>
   );
 }
 
-// 드래그 가능한 표시 전용 칸 (달성률%)
 function DraggableDisplay({
-  coordKey,
-  text,
-  coords,
-  editMode,
-  onDragEnd,
+  coordKey, text, coords, style: overlayStyle, editMode, selectedKey,
+  onDragEnd, onSelect,
 }: {
-  coordKey: CoordKey;
-  text: string;
-  coords: number[];
-  editMode: boolean;
+  coordKey: CoordKey; text: string; coords: number[];
+  style: { color: string; fontSize: number };
+  editMode: boolean; selectedKey: CoordKey | null;
   onDragEnd: (key: CoordKey, newCoords: number[]) => void;
+  onSelect: (key: CoordKey) => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const dragStart = useRef<{ mouseX: number; mouseY: number; origLeft: number; origTop: number } | null>(null);
+  const isSelected = selectedKey === coordKey;
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (!editMode) return;
     e.preventDefault();
+    onSelect(coordKey);
     const parent = (e.currentTarget as HTMLElement).closest('.overlay-container') as HTMLElement;
     if (!parent) return;
     const rect = parent.getBoundingClientRect();
     dragStart.current = { mouseX: e.clientX, mouseY: e.clientY, origLeft: coords[0], origTop: coords[1] };
-
     const onMouseMove = (mv: MouseEvent) => {
-      if (!dragStart.current) return;
+      if (!dragStart.current || !containerRef.current) return;
       const dx = ((mv.clientX - dragStart.current.mouseX) / rect.width) * 100;
       const dy = ((mv.clientY - dragStart.current.mouseY) / rect.height) * 100;
-      if (containerRef.current) {
-        containerRef.current.style.left = `${Math.max(0, dragStart.current.origLeft + dx)}%`;
-        containerRef.current.style.top = `${Math.max(0, dragStart.current.origTop + dy)}%`;
-      }
+      containerRef.current.style.left = `${Math.max(0, dragStart.current.origLeft + dx)}%`;
+      containerRef.current.style.top = `${Math.max(0, dragStart.current.origTop + dy)}%`;
     };
     const onMouseUp = (mu: MouseEvent) => {
       if (!dragStart.current) return;
       const dx = ((mu.clientX - dragStart.current.mouseX) / rect.width) * 100;
       const dy = ((mu.clientY - dragStart.current.mouseY) / rect.height) * 100;
-      const newLeft = Math.max(0, dragStart.current.origLeft + dx);
-      const newTop = Math.max(0, dragStart.current.origTop + dy);
-      onDragEnd(coordKey, [newLeft, newTop, coords[2], coords[3]]);
+      onDragEnd(coordKey, [Math.max(0, dragStart.current.origLeft + dx), Math.max(0, dragStart.current.origTop + dy), coords[2], coords[3]]);
       dragStart.current = null;
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
     };
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('mouseup', onMouseUp);
-  }, [editMode, coords, coordKey, onDragEnd]);
+  }, [editMode, coords, coordKey, onDragEnd, onSelect]);
 
   return (
-    <div
-      ref={containerRef}
-      style={{
-        position: 'absolute',
-        left: `${coords[0]}%`,
-        top: `${coords[1]}%`,
-        width: `${coords[2]}%`,
-        height: `${coords[3]}%`,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: 'clamp(8px, 1.2vw, 13px)',
-        fontWeight: 700,
-        color: '#3a2a0a',
-        zIndex: 10,
-        cursor: editMode ? 'grab' : 'default',
-        outline: editMode ? '2px dashed #c0820a' : 'none',
-        background: editMode ? 'rgba(192,130,10,0.08)' : 'transparent',
-        userSelect: 'none',
-      }}
+    <div ref={containerRef} style={{
+      position: 'absolute', left: `${coords[0]}%`, top: `${coords[1]}%`,
+      width: `${coords[2]}%`, height: `${coords[3]}%`,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontSize: overlayStyle.fontSize, fontWeight: 700, color: overlayStyle.color,
+      zIndex: 10, cursor: editMode ? 'grab' : 'default',
+      outline: editMode ? (isSelected ? '2px solid #c0820a' : '2px dashed #c0820a') : 'none',
+      background: editMode ? (isSelected ? 'rgba(192,130,10,0.15)' : 'rgba(192,130,10,0.06)') : 'transparent',
+      userSelect: 'none',
+    }}
       onMouseDown={handleMouseDown}
     >
-      {editMode ? (coordKey as string).slice(0, 5) : text}
+      {text}
     </div>
   );
 }
 
-export function ClubOverlay({ club, overallRate, getRate, onUpdateStat, onUpdateCoord, onAddRecord }: Props) {
+export function ClubOverlay({ club, overallRate, getRate, onUpdateStat, onUpdateCoord, onUpdateStyle, onAddRecord }: Props) {
   const [showInput, setShowInput] = useState(false);
   const [showRecords, setShowRecords] = useState(false);
   const [editMode, setEditMode] = useState(false);
+  const [selectedKey, setSelectedKey] = useState<CoordKey | null>(null);
   const c = club.coords;
+
+  const getStyle = (key: CoordKey) => ({
+    color: club.styles[key]?.color ?? DEFAULT_COLOR,
+    fontSize: club.styles[key]?.fontSize ?? DEFAULT_FONTSIZE,
+  });
 
   const handleDragEnd = useCallback((key: CoordKey, newCoords: number[]) => {
     onUpdateCoord(key, newCoords);
   }, [onUpdateCoord]);
 
-  const gaugeWidth = overallRate;
+  const handleSelect = useCallback((key: CoordKey) => {
+    setSelectedKey(prev => prev === key ? null : key);
+  }, []);
 
-  // 게이지 드래그
+  // 게이지 드래그 + 리사이즈
   const gaugeRef = useRef<HTMLDivElement>(null);
-  const gaugeDragStart = useRef<{ mouseX: number; mouseY: number; origLeft: number; origTop: number } | null>(null);
+  const gaugeDrag = useRef<{ mouseX: number; mouseY: number; origLeft: number; origTop: number } | null>(null);
+  const gaugeResize = useRef<{
+    edge: 'right' | 'bottom' | 'left' | 'top';
+    mouseX: number; mouseY: number;
+    origLeft: number; origTop: number; origW: number; origH: number;
+  } | null>(null);
 
   const handleGaugeMouseDown = useCallback((e: React.MouseEvent) => {
     if (!editMode) return;
     e.preventDefault();
+    setSelectedKey('gauge');
     const parent = (e.currentTarget as HTMLElement).closest('.overlay-container') as HTMLElement;
     if (!parent) return;
     const rect = parent.getBoundingClientRect();
-    gaugeDragStart.current = { mouseX: e.clientX, mouseY: e.clientY, origLeft: c.gauge[0], origTop: c.gauge[1] };
+    gaugeDrag.current = { mouseX: e.clientX, mouseY: e.clientY, origLeft: c.gauge[0], origTop: c.gauge[1] };
     const onMouseMove = (mv: MouseEvent) => {
-      if (!gaugeDragStart.current || !gaugeRef.current) return;
-      const dx = ((mv.clientX - gaugeDragStart.current.mouseX) / rect.width) * 100;
-      const dy = ((mv.clientY - gaugeDragStart.current.mouseY) / rect.height) * 100;
-      gaugeRef.current.style.left = `${Math.max(0, gaugeDragStart.current.origLeft + dx)}%`;
-      gaugeRef.current.style.top = `${Math.max(0, gaugeDragStart.current.origTop + dy)}%`;
+      if (!gaugeDrag.current || !gaugeRef.current) return;
+      const dx = ((mv.clientX - gaugeDrag.current.mouseX) / rect.width) * 100;
+      const dy = ((mv.clientY - gaugeDrag.current.mouseY) / rect.height) * 100;
+      gaugeRef.current.style.left = `${Math.max(0, gaugeDrag.current.origLeft + dx)}%`;
+      gaugeRef.current.style.top = `${Math.max(0, gaugeDrag.current.origTop + dy)}%`;
     };
     const onMouseUp = (mu: MouseEvent) => {
-      if (!gaugeDragStart.current) return;
-      const dx = ((mu.clientX - gaugeDragStart.current.mouseX) / rect.width) * 100;
-      const dy = ((mu.clientY - gaugeDragStart.current.mouseY) / rect.height) * 100;
-      onUpdateCoord('gauge', [Math.max(0, gaugeDragStart.current.origLeft + dx), Math.max(0, gaugeDragStart.current.origTop + dy), c.gauge[2], c.gauge[3]]);
-      gaugeDragStart.current = null;
+      if (!gaugeDrag.current) return;
+      const dx = ((mu.clientX - gaugeDrag.current.mouseX) / rect.width) * 100;
+      const dy = ((mu.clientY - gaugeDrag.current.mouseY) / rect.height) * 100;
+      onUpdateCoord('gauge', [Math.max(0, gaugeDrag.current.origLeft + dx), Math.max(0, gaugeDrag.current.origTop + dy), c.gauge[2], c.gauge[3]]);
+      gaugeDrag.current = null;
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
     };
@@ -263,186 +274,110 @@ export function ClubOverlay({ club, overallRate, getRate, onUpdateStat, onUpdate
     window.addEventListener('mouseup', onMouseUp);
   }, [editMode, c.gauge, onUpdateCoord]);
 
+  // 리사이즈 핸들 (4방향)
+  const handleResizeMouseDown = useCallback((e: React.MouseEvent, edge: 'right' | 'bottom' | 'left' | 'top') => {
+    if (!editMode) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const parent = (e.currentTarget as HTMLElement).closest('.overlay-container') as HTMLElement;
+    if (!parent) return;
+    const rect = parent.getBoundingClientRect();
+    gaugeResize.current = { edge, mouseX: e.clientX, mouseY: e.clientY, origLeft: c.gauge[0], origTop: c.gauge[1], origW: c.gauge[2], origH: c.gauge[3] };
+    const onMouseMove = (mv: MouseEvent) => {
+      if (!gaugeResize.current || !gaugeRef.current) return;
+      const dx = ((mv.clientX - gaugeResize.current.mouseX) / rect.width) * 100;
+      const dy = ((mv.clientY - gaugeResize.current.mouseY) / rect.height) * 100;
+      const { origLeft, origTop, origW, origH } = gaugeResize.current;
+      if (edge === 'right') gaugeRef.current.style.width = `${Math.max(2, origW + dx)}%`;
+      if (edge === 'bottom') gaugeRef.current.style.height = `${Math.max(0.5, origH + dy)}%`;
+      if (edge === 'left') {
+        gaugeRef.current.style.left = `${Math.max(0, origLeft + dx)}%`;
+        gaugeRef.current.style.width = `${Math.max(2, origW - dx)}%`;
+      }
+      if (edge === 'top') {
+        gaugeRef.current.style.top = `${Math.max(0, origTop + dy)}%`;
+        gaugeRef.current.style.height = `${Math.max(0.5, origH - dy)}%`;
+      }
+    };
+    const onMouseUp = (mu: MouseEvent) => {
+      if (!gaugeResize.current) return;
+      const dx = ((mu.clientX - gaugeResize.current.mouseX) / rect.width) * 100;
+      const dy = ((mu.clientY - gaugeResize.current.mouseY) / rect.height) * 100;
+      const { origLeft, origTop, origW, origH, edge: ed } = gaugeResize.current;
+      let newLeft = origLeft, newTop = origTop, newW = origW, newH = origH;
+      if (ed === 'right')  { newW = Math.max(2, origW + dx); }
+      if (ed === 'bottom') { newH = Math.max(0.5, origH + dy); }
+      if (ed === 'left')   { newLeft = Math.max(0, origLeft + dx); newW = Math.max(2, origW - dx); }
+      if (ed === 'top')    { newTop = Math.max(0, origTop + dy); newH = Math.max(0.5, origH - dy); }
+      onUpdateCoord('gauge', [newLeft, newTop, newW, newH]);
+      gaugeResize.current = null;
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  }, [editMode, c.gauge, onUpdateCoord]);
+
+  const gaugeWidth = overallRate;
+
+  const numberFields: { key: CoordKey; stat: StatKey; field: 'current' | 'target' }[] = [
+    { key: 'evHyun',  stat: 'evangelism',          field: 'current' },
+    { key: 'evMok',   stat: 'evangelism',          field: 'target'  },
+    { key: 'effHyun', stat: 'effectiveEvangelism', field: 'current' },
+    { key: 'effMok',  stat: 'effectiveEvangelism', field: 'target'  },
+    { key: 'attHyun', stat: 'attendance',          field: 'current' },
+    { key: 'attMok',  stat: 'attendance',          field: 'target'  },
+    { key: 'bapHyun', stat: 'baptism',             field: 'current' },
+    { key: 'bapMok',  stat: 'baptism',             field: 'target'  },
+  ];
+
+  const displayFields: { key: CoordKey; text: string }[] = [
+    { key: 'evBogo',   text: getRate(club.stats.evangelism.current, club.stats.evangelism.target) > 0 ? `${getRate(club.stats.evangelism.current, club.stats.evangelism.target)}%` : '' },
+    { key: 'effInter', text: getRate(club.stats.effectiveEvangelism.current, club.stats.effectiveEvangelism.target) > 0 ? `${getRate(club.stats.effectiveEvangelism.current, club.stats.effectiveEvangelism.target)}%` : '' },
+    { key: 'attEvent', text: getRate(club.stats.attendance.current, club.stats.attendance.target) > 0 ? `${getRate(club.stats.attendance.current, club.stats.attendance.target)}%` : '' },
+    { key: 'bapReg',   text: getRate(club.stats.baptism.current, club.stats.baptism.target) > 0 ? `${getRate(club.stats.baptism.current, club.stats.baptism.target)}%` : '' },
+    { key: 'gaugePct', text: overallRate > 0 ? String(overallRate) : '' },
+  ];
+
   return (
     <div style={{ width: '100%', position: 'relative' }}>
-      {/* 편집 모드 배너 */}
       {editMode && (
         <div style={{
-          background: 'rgba(232,67,147,0.12)',
-          border: '1px solid #e84393',
-          borderRadius: 6,
-          padding: '6px 12px',
-          marginBottom: 8,
-          fontSize: 13,
-          color: '#e84393',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
+          background: 'rgba(232,67,147,0.10)', border: '1px solid #e84393',
+          borderRadius: 6, padding: '6px 12px', marginBottom: 8,
+          fontSize: 13, color: '#e84393', display: 'flex', alignItems: 'center', gap: 8,
         }}>
-          ✏️ <strong>편집 모드</strong> — 각 칸을 드래그해서 위치를 맞추세요. 완료 후 "편집 완료"를 누르면 저장됩니다.
+          ✏️ <strong>편집 모드</strong> — 드래그: 이동 / 클릭: 색상·크기 편집 / 게이지 테두리: 크기 조절
         </div>
       )}
 
       <div className="overlay-container" style={{ position: 'relative', width: '100%' }}>
-        <img
-          src={club.image}
-          alt={club.name}
-          style={{ width: '100%', height: 'auto', display: 'block' }}
-          draggable={false}
-        />
+        <img src={club.image} alt={club.name} style={{ width: '100%', height: 'auto', display: 'block' }} draggable={false} />
 
-        {/* 단순전도 현황 */}
-        <DraggableOverlayNumber coordKey="evHyun" value={club.stats.evangelism.current} coords={c.evHyun} editMode={editMode} onChange={v => onUpdateStat('evangelism', 'current', v)} onDragEnd={handleDragEnd} />
-        {/* 단순전도 목표 */}
-        <DraggableOverlayNumber coordKey="evMok" value={club.stats.evangelism.target} coords={c.evMok} editMode={editMode} onChange={v => onUpdateStat('evangelism', 'target', v)} onDragEnd={handleDragEnd} />
-        {/* 단순전도 달성률 */}
-        <DraggableDisplay coordKey="evBogo" text={getRate(club.stats.evangelism.current, club.stats.evangelism.target) > 0 ? `${getRate(club.stats.evangelism.current, club.stats.evangelism.target)}%` : ''} coords={c.evBogo} editMode={editMode} onDragEnd={handleDragEnd} />
+        {/* 숫자 입력 칸들 */}
+        {numberFields.map(({ key, stat, field }) => (
+          <DraggableOverlayNumber
+            key={key} coordKey={key}
+            value={club.stats[stat][field]}
+            coords={c[key]} style={getStyle(key)}
+            editMode={editMode} selectedKey={selectedKey}
+            onChange={v => onUpdateStat(stat, field, v)}
+            onDragEnd={handleDragEnd} onSelect={handleSelect}
+          />
+        ))}
 
-        {/* 유효전도 현황 */}
-        <DraggableOverlayNumber coordKey="effHyun" value={club.stats.effectiveEvangelism.current} coords={c.effHyun} editMode={editMode} onChange={v => onUpdateStat('effectiveEvangelism', 'current', v)} onDragEnd={handleDragEnd} />
-        {/* 유효전도 목표 */}
-        <DraggableOverlayNumber coordKey="effMok" value={club.stats.effectiveEvangelism.target} coords={c.effMok} editMode={editMode} onChange={v => onUpdateStat('effectiveEvangelism', 'target', v)} onDragEnd={handleDragEnd} />
-        {/* 유효전도 달성률 */}
-        <DraggableDisplay coordKey="effInter" text={getRate(club.stats.effectiveEvangelism.current, club.stats.effectiveEvangelism.target) > 0 ? `${getRate(club.stats.effectiveEvangelism.current, club.stats.effectiveEvangelism.target)}%` : ''} coords={c.effInter} editMode={editMode} onDragEnd={handleDragEnd} />
-
-        {/* 출석 현황 */}
-        <DraggableOverlayNumber coordKey="attHyun" value={club.stats.attendance.current} coords={c.attHyun} editMode={editMode} onChange={v => onUpdateStat('attendance', 'current', v)} onDragEnd={handleDragEnd} />
-        {/* 출석 목표 */}
-        <DraggableOverlayNumber coordKey="attMok" value={club.stats.attendance.target} coords={c.attMok} editMode={editMode} onChange={v => onUpdateStat('attendance', 'target', v)} onDragEnd={handleDragEnd} />
-        {/* 출석 달성률 */}
-        <DraggableDisplay coordKey="attEvent" text={getRate(club.stats.attendance.current, club.stats.attendance.target) > 0 ? `${getRate(club.stats.attendance.current, club.stats.attendance.target)}%` : ''} coords={c.attEvent} editMode={editMode} onDragEnd={handleDragEnd} />
-
-        {/* 침례 현황 */}
-        <DraggableOverlayNumber coordKey="bapHyun" value={club.stats.baptism.current} coords={c.bapHyun} editMode={editMode} onChange={v => onUpdateStat('baptism', 'current', v)} onDragEnd={handleDragEnd} />
-        {/* 침례 목표 */}
-        <DraggableOverlayNumber coordKey="bapMok" value={club.stats.baptism.target} coords={c.bapMok} editMode={editMode} onChange={v => onUpdateStat('baptism', 'target', v)} onDragEnd={handleDragEnd} />
-        {/* 침례 달성률 */}
-        <DraggableDisplay coordKey="bapReg" text={getRate(club.stats.baptism.current, club.stats.baptism.target) > 0 ? `${getRate(club.stats.baptism.current, club.stats.baptism.target)}%` : ''} coords={c.bapReg} editMode={editMode} onDragEnd={handleDragEnd} />
+        {/* 달성률 표시 칸들 */}
+        {displayFields.map(({ key, text }) => (
+          <DraggableDisplay
+            key={key} coordKey={key} text={text}
+            coords={c[key]} style={getStyle(key)}
+            editMode={editMode} selectedKey={selectedKey}
+            onDragEnd={handleDragEnd} onSelect={handleSelect}
+          />
+        ))}
 
         {/* 게이지바 */}
-        <div
-          ref={gaugeRef}
-          style={{
-            position: 'absolute',
-            left: `${c.gauge[0]}%`,
-            top: `${c.gauge[1]}%`,
-            width: `${c.gauge[2]}%`,
-            height: `${c.gauge[3]}%`,
-            overflow: 'hidden',
-            borderRadius: 99,
-            zIndex: 10,
-            cursor: editMode ? 'grab' : 'default',
-            outline: editMode ? '2px dashed #e84393' : 'none',
-          }}
-          onMouseDown={handleGaugeMouseDown}
-        >
-          <div style={{
-            height: '100%',
-            width: `${gaugeWidth}%`,
-            background: 'linear-gradient(90deg, #e84393, #ff6b35)',
-            borderRadius: 99,
-            transition: 'width 0.8s cubic-bezier(0.34,1.56,0.64,1)',
-          }} />
-        </div>
-
-        {/* % 숫자 */}
-        <DraggableDisplay
-          coordKey="gaugePct"
-          text={String(overallRate)}
-          coords={c.gaugePct}
-          editMode={editMode}
-          onDragEnd={handleDragEnd}
-        />
-      </div>
-
-      {/* 하단 버튼 */}
-      <div style={{ display: 'flex', gap: 8, padding: '8px 0', justifyContent: 'flex-end' }}>
-        <button
-          className={`ov-btn ${editMode ? 'ov-btn-primary' : ''}`}
-          style={editMode ? { background: '#e84393', color: '#fff', border: 'none' } : {}}
-          onClick={() => setEditMode(!editMode)}
-        >
-          {editMode ? '✅ 편집 완료' : '🎯 위치 편집'}
-        </button>
-        <button className="ov-btn" onClick={() => setShowRecords(!showRecords)}>📋 기록</button>
-        <button className="ov-btn ov-btn-primary" onClick={() => setShowInput(true)}>✏️ 오늘 수치 입력</button>
-      </div>
-
-      {/* 기록 테이블 */}
-      {showRecords && club.records.length > 0 && (
-        <div className="records-panel">
-          <table className="records-table">
-            <thead>
-              <tr><th>날짜</th><th>단순전도</th><th>유효전도</th><th>출석</th><th>침례</th></tr>
-            </thead>
-            <tbody>
-              {[...club.records].reverse().map(r => (
-                <tr key={r.date}>
-                  <td>{r.date}</td><td>{r.evangelism}</td>
-                  <td>{r.effectiveEvangelism}</td><td>{r.attendance}</td><td>{r.baptism}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* 일별 입력 모달 */}
-      {showInput && (
-        <DailyModal club={club} onSave={r => { onAddRecord(r); setShowInput(false); }} onClose={() => setShowInput(false)} />
-      )}
-    </div>
-  );
-}
-
-function DailyModal({ club, onSave, onClose }: { club: Club; onSave: (r: DailyRecord) => void; onClose: () => void }) {
-  const today = new Date().toISOString().split('T')[0];
-  const existing = club.records.find(r => r.date === today);
-  const [form, setForm] = useState<DailyRecord>({
-    date: today,
-    evangelism: existing?.evangelism ?? 0,
-    effectiveEvangelism: existing?.effectiveEvangelism ?? 0,
-    attendance: existing?.attendance ?? 0,
-    baptism: existing?.baptism ?? 0,
-  });
-
-  const fields: { key: keyof Omit<DailyRecord, 'date'>; label: string }[] = [
-    { key: 'evangelism', label: '단순전도' },
-    { key: 'effectiveEvangelism', label: '유효전도' },
-    { key: 'attendance', label: '출석' },
-    { key: 'baptism', label: '침례' },
-  ];
-
-  return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <h2>일일 수치 입력</h2>
-          <p className="modal-subtitle">{club.name}</p>
-        </div>
-        <div className="modal-body">
-          <label className="date-input-group">
-            <span>날짜</span>
-            <input type="date" value={form.date}
-              onChange={e => {
-                const d = e.target.value;
-                const found = club.records.find(r => r.date === d);
-                setForm(found ? { ...found } : { date: d, evangelism: 0, effectiveEvangelism: 0, attendance: 0, baptism: 0 });
-              }} />
-          </label>
-          {fields.map(f => (
-            <div key={f.key} className="daily-field">
-              <span>{f.label}</span>
-              <input type="number" min={0} value={form[f.key]}
-                onChange={e => setForm(prev => ({ ...prev, [f.key]: Number(e.target.value) }))} />
-            </div>
-          ))}
-        </div>
-        <div className="modal-footer">
-          <button className="btn-secondary" onClick={onClose}>취소</button>
-          <button className="btn-primary" onClick={() => onSave(form)}>저장</button>
-        </div>
-      </div>
-    </div>
-  );
-}
+        <div ref={gaugeRef} style={{
+          position: 'absolute', left: `${c.gauge[0]}%`, top: `${c.gauge[1]}%`,
+          width: `${c.gauge[2]}%`, height: `${c.gauge[3]}%`,
+          overflow: 'hidde
